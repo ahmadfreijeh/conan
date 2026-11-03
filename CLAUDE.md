@@ -13,6 +13,7 @@ Current state: core app skeleton only. `app/agent/` and `app/tools/` are empty p
 - Build step by step. One small piece at a time, never the whole feature in one go.
 - Before writing code for a step, explain in a few plain bullets what it does and why, then wait for the user to agree.
 - After each step, say what was added and how to try it. Keep explanations short and simple.
+- Don't write or run tests unless the user asks.
 - Discuss before planning: don't jump to a full implementation plan unless asked.
 
 ## Commands
@@ -22,7 +23,7 @@ All commands go through uv (no venv activation needed). Python 3.12.
 - Install: `uv sync`
 - Run API: `uv run fastapi dev app/main.py` (docs at /docs)
 - Run worker: `uv run arq app.worker.main.WorkerSettings`
-- Tests: `uv run pytest`; single test: `uv run pytest tests/test_health.py::test_health`
+- Engine CLI: `uv run python -m app.engine samples/photo.jpeg [--out out/photo] [--no-detect]` (test photo: `samples/photo.jpeg`)
 - Lint/format: `uv run ruff check . && uv run ruff format .`
 - Migrations: `uv run alembic revision --autogenerate -m "msg"`, then `uv run alembic upgrade head`
 - Add a dependency: `uv add <pkg>` (dev: `uv add --group dev <pkg>`)
@@ -30,7 +31,7 @@ All commands go through uv (no venv activation needed). Python 3.12.
 ## Local environment
 
 - No Docker (too heavy on the dev machine). Postgres 16 (EnterpriseDB install) and Redis run natively on macOS.
-- Config comes from `.env` (see `.env.example`) via `app/core/config.py::get_settings()`.
+- Config comes from `.env` (see `.env.example`) via `app/core/config.py::get_settings()`, including engine settings (device, detection/OCR cutoffs, OCR model names).
 - PostGIS is NOT installed yet, so don't use geometry types or the `postgis` extension until it is set up.
 
 ## Architecture
