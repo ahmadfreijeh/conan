@@ -150,6 +150,20 @@ The left panel is the history: every upload, newest first, with its top guess. C
 
 From the CLI, `--reason --out <dir>` saves the same `clues.json` and `sent/` (crops + `crops.json`) before calling the LLM.
 
+### Screenshots
+
+Ready to start: history on the left, photo upload, the five progress steps.
+
+![Start screen](assets/init.png)
+
+A finished run: follow-up queries, OCR fixes and what the model saw in the photo.
+
+![Result tab](assets/2.png)
+
+Model input: the close-up crops sent to the LLM, with label, group, score and position.
+
+![Model input tab](assets/3.png)
+
 ## Dev
 
 ```bash
