@@ -4,7 +4,14 @@ A short case study of how I approached this project: what I did first, in what o
 
 ![How I built conan: problem, scaffold, then phases](how-i-built-it.svg)
 
-## 1. Start from the problem
+## 1. Where the idea came from
+
+- **Spark:** I saw a reel by [guessnotlost](https://www.instagram.com/guessnotlost/) on Instagram, finding where a photo was taken, by hand.
+- **Study:** I watched how he did it: spot small clues (signs, shops, buildings), link them together, search, then check.
+- **Research:** I looked for tools that could do each of his steps.
+- **Idea:** teach an agent the same method.
+
+## 2. Start from the problem
 
 **Goal:** give it a photo, get back *where* it was taken, and *why*.
 
@@ -19,7 +26,7 @@ flowchart LR
     V --> L[📍 Location<br/>+ reasons]
 ```
 
-## 2. Scaffold first, features second
+## 3. Scaffold first, features second
 
 Before any AI code, I set up the backend a real product would need. Adding features later is easy; fixing a weak base is not.
 
@@ -37,7 +44,7 @@ flowchart LR
 | Arq worker | Geolocation runs are slow, so they shouldn't block requests |
 | Typed errors, one error shape | Clients always get `{"error": {code, message}}` |
 
-## 3. Build in phases, each with a clear output
+## 4. Build in phases, each with a clear output
 
 Each phase writes a file the next phase reads. So I can rerun one phase without the others, and inspect what passed between them.
 
@@ -63,7 +70,7 @@ flowchart LR
 - Structured answer: ranked places, confidence, evidence, and search queries for Phase 3.
 - A small test UI to run a photo and see what went in and what came out.
 
-## 4. How I work, step by step
+## 5. How I work, step by step
 
 ```mermaid
 flowchart LR
@@ -78,7 +85,7 @@ flowchart LR
 - Always run it end to end on a real photo before moving on.
 - Keep the docs and roadmap up to date as I go ([README](../README.md#roadmap)).
 
-## 5. Principles I kept
+## 6. Principles I kept
 
 - **Local first:** cheap, private extraction before paying for an LLM call.
 - **Evidence over guesses:** every answer comes with the clues behind it.
