@@ -13,7 +13,7 @@ from typing import Protocol
 from PIL import Image
 
 from app.core.config import get_settings
-from app.engine.payload import Box, DetectedObject, TextItem
+from app.modules.engine.payload import Box, DetectedObject, TextItem
 
 # Models, cutoffs and recognizers come from settings (.env): OCR_DET_MODEL, OCR_REC_MODELS, ...
 IOU_SAME_LINE = 0.5  # boxes overlapping more than this are the same text line

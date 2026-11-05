@@ -13,7 +13,7 @@ from typing import Protocol
 from PIL import Image
 
 from app.core.config import get_settings
-from app.engine.payload import Box, DetectedObject
+from app.modules.engine.payload import Box, DetectedObject
 
 # What we ask the model to look for, grouped by what each tells us about the location.
 # People and faces are left out on purpose (privacy). Pick groups with DETECT_GROUPS in .env.

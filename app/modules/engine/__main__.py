@@ -1,17 +1,17 @@
-"""CLI: uv run python -m app.engine samples/photo.jpeg [--out out/photo] [--no-detect] [--no-ocr]
-[--reason] [--from-payload out/photo/payload.json]"""
+"""CLI: uv run python -m app.modules.engine samples/photo.jpeg [--out out/photo] [--no-detect]
+[--no-ocr] [--reason] [--from-payload out/photo/payload.json]"""
 
 import argparse
 import sys
 from pathlib import Path
 
-from app.engine.loader import ImageLoadError
-from app.engine.payload import ExtractionPayload
-from app.engine.pipeline import run_pipeline
+from app.modules.engine.loader import ImageLoadError
+from app.modules.engine.payload import ExtractionPayload
+from app.modules.engine.pipeline import run_pipeline
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(prog="python -m app.engine", description=__doc__)
+    parser = argparse.ArgumentParser(prog="python -m app.modules.engine", description=__doc__)
     parser.add_argument("image", help="path to a JPEG, PNG or WebP file")
     parser.add_argument("--out", help="folder to save payload.json, reason.json and crops/")
     parser.add_argument(
@@ -46,7 +46,7 @@ def main(argv: list[str] | None = None) -> int:
 
     import anthropic
 
-    from app.agent.reason import reason  # only import Strands when needed
+    from app.modules.agent.reason import reason  # only import Strands when needed
 
     try:
         result = reason(payload, out_dir=args.out)

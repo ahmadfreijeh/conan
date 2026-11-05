@@ -9,8 +9,8 @@ from datetime import datetime
 
 from PIL import Image
 
-from app.engine.loader import LoadedImage
-from app.engine.payload import GPS, Metadata
+from app.modules.engine.loader import LoadedImage
+from app.modules.engine.payload import GPS, Metadata
 
 # EXIF tag ids (see the EXIF spec / PIL.ExifTags)
 EXIF_IFD = 0x8769

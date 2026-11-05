@@ -10,7 +10,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
-from app.engine.loader import LoadedImage
+from app.modules.engine.loader import LoadedImage
 
 SCHEMA_VERSION = "1"
 
@@ -83,7 +83,7 @@ class ExtractionPayload(BaseModel):
     objects: list[DetectedObject] = []
     text: list[TextItem] = []
     # Performance + environment for this run: total time, per-step timings, CPU, GPU,
-    # peak memory, machine, library versions, settings. See app/engine/runinfo.py.
+    # peak memory, machine, library versions, settings. See app/modules/engine/runinfo.py.
     run: dict[str, Any] = {}
 
 

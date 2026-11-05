@@ -9,12 +9,12 @@ from contextlib import contextmanager
 from pathlib import Path
 
 from app.core.config import get_settings
-from app.engine.detection import Detector, detect_objects, get_default_detector, save_crops
-from app.engine.loader import load_image
-from app.engine.metadata import extract_metadata
-from app.engine.ocr import TextReader, get_default_reader, read_text, save_text_crops
-from app.engine.payload import ExtractionPayload, new_payload
-from app.engine.runinfo import RunMeter, append_history
+from app.modules.engine.detection import Detector, detect_objects, get_default_detector, save_crops
+from app.modules.engine.loader import load_image
+from app.modules.engine.metadata import extract_metadata
+from app.modules.engine.ocr import TextReader, get_default_reader, read_text, save_text_crops
+from app.modules.engine.payload import ExtractionPayload, new_payload
+from app.modules.engine.runinfo import RunMeter, append_history
 
 
 @contextmanager
