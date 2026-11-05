@@ -179,7 +179,7 @@ Pull raw clues from the photo, all local: objects (Grounding DINO), text (Paddle
 
 ### Phase 2: Reason 🚧 (in progress)
 
-A Strands agent with Claude reads the clues and the photo, then returns ranked candidate places with evidence and search queries for Phase 3.
+A Strands agent with Claude reads the clues and the photo, then returns ranked candidate places with evidence and search queries for Phase 3. Details: [docs/phase-2-reason.md](docs/phase-2-reason.md).
 
 - [x] Clean clues from the Phase 1 payload for the LLM
 - [x] Send the photo plus close-up crops of key objects
@@ -190,7 +190,7 @@ A Strands agent with Claude reads the clues and the photo, then returns ranked c
 
 ### Phase 3: Search
 
-Give the agent tools to look up the candidate places.
+Give the agent tools to look up the candidate places, using many sources (maps, web, wiki, street and review photos). Plan: [docs/phase-3-search.md](docs/phase-3-search.md).
 
 - [ ] Add `@tool` functions in `app/tools/` (e.g. map / place search, web search)
 - [ ] Let the agent run the search queries from Phase 2
