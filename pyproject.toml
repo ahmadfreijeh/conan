@@ -17,6 +17,7 @@ dependencies = [
     "transformers>=5.22.1",
     "paddlepaddle>=3.3.1",
     "paddleocr>=3.7.0",
+    "strands-agents[anthropic]>=1.63.0",
 ]
 
 [dependency-groups]
