@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Image geolocation agent: given a photo, extract clues (objects, text, EXIF), guess the region, search candidate places and verify them. Design doc: https://claude.ai/artifact/WyxufsioVRXD8WkcrC14mD
 
-Current state: core app skeleton only. `app/agent/` and `app/tools/` are empty placeholders for the Strands agent and its `@tool` functions.
+Current state: Phase 1 (extract) in `app/engine/`; Phase 2 (reason) in `app/agent/`: a Strands agent with Claude and no tools yet. `app/tools/` is an empty placeholder for Phase 3 `@tool` functions.
 
 ## How we work
 
@@ -23,7 +23,7 @@ All commands go through uv (no venv activation needed). Python 3.12.
 - Install: `uv sync`
 - Run API: `uv run fastapi dev app/main.py` (docs at /docs)
 - Run worker: `uv run arq app.worker.main.WorkerSettings`
-- Engine CLI: `uv run python -m app.engine samples/photo.jpeg [--out out/photo] [--no-detect]` (test photo: `samples/photo.jpeg`)
+- Engine CLI: `uv run python -m app.engine samples/photo.jpeg [--out out/photo] [--no-detect] [--reason] [--from-payload out/photo/payload.json]` (test photo: `samples/photo.jpeg`). `--reason` needs `ANTHROPIC_API_KEY` in `.env`
 - Lint/format: `uv run ruff check . && uv run ruff format .`
 - Migrations: `uv run alembic revision --autogenerate -m "msg"`, then `uv run alembic upgrade head`
 - Add a dependency: `uv add <pkg>` (dev: `uv add --group dev <pkg>`)
