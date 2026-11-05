@@ -7,7 +7,7 @@ Status: **done**. Built step by step; each step is reviewed before the next star
 ## In and out
 
 - **In:** one photo (JPEG, PNG or WebP).
-- **Out:** `payload.json` with four parts: `image` (size, format, hash), `metadata` (EXIF GPS, time, device, source app), `objects` (label, box, crop) and `text` (OCR text, language, box). Plus a `run` part with timings and machine use. Shape: `app/modules/engine/payload.py`.
+- **Out:** `payload.json` with four parts: `image` (size, format, hash), `metadata` (EXIF GPS, time, device, source app), `objects` (label, box, crop) and `text` (OCR text, language, box). Plus a `run` part with timings and machine use. Shape: `app/modules/engine/schemas.py`.
 
 Run it: `uv run python -m app.modules.engine samples/photo.jpeg --out out/photo` (more options in the [README](../README.md#image-engine-phase-1-extract)).
 
