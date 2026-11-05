@@ -1,6 +1,18 @@
 # conan
 
-Image geolocation agent. Core app skeleton: FastAPI, async SQLAlchemy + Postgres, Redis, Arq worker.
+Image geolocation agent: give it a photo and it works out where the photo was taken.
+
+## What it does
+
+It pulls clues out of the photo, has Claude reason about them, then searches and checks candidate places. See [Roadmap](#roadmap) for the phases.
+
+## Aim
+
+Act like a human geo-detective: explain *why* it thinks a photo is from a place, not just give coordinates, and get as close to the exact spot as the clues allow.
+
+## Stack
+
+FastAPI, async SQLAlchemy + Postgres, Redis, Arq worker, Strands agent with Claude.
 
 ## Setup
 
@@ -141,3 +153,36 @@ uv run ruff check . && uv run ruff format .
 - `app/agent` Phase 2 reasoning agent (clues, result shape, Strands agent)
 - `app/tools` reserved for the agent's Phase 3 tools
 - `app/ui` test page (upload + live run); `app/api/v1/runs.py` + `app/services/runs.py` run the script for it
+
+## Roadmap
+
+### Phase 1: Extract ✅
+
+Pull raw clues from the photo, all local: objects (Grounding DINO), text (PaddleOCR, Arabic + English) and EXIF metadata. Details: [docs/phase-1-extract.md](docs/phase-1-extract.md).
+
+### Phase 2: Reason ✅
+
+A Strands agent with Claude reads the clues and the photo, then returns ranked candidate places with evidence and search queries for Phase 3.
+
+### Phase 3: Search
+
+Give the agent tools to look up the candidate places.
+
+- [ ] Add `@tool` functions in `app/tools/` (e.g. map / place search, web search)
+- [ ] Let the agent run the search queries from Phase 2
+- [ ] Collect candidate places with coordinates
+- [ ] Find reference photos for each candidate
+
+### Phase 4: Verify
+
+Check candidates against the photo and pick the final location.
+
+- [ ] Compare the photo with reference photos (DINOv2 similarity)
+- [ ] Score each candidate and pick the best match
+- [ ] Return a final location with coordinates, confidence and the reasons why
+
+### Production
+
+- [ ] Run geolocation jobs in the Arq worker instead of the request
+- [ ] Save runs and results to Postgres
+- [ ] Set up PostGIS for location data
