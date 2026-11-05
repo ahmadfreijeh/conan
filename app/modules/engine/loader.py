@@ -6,30 +6,16 @@ All processing happens on in-memory copies.
 
 import hashlib
 import io
-from dataclasses import dataclass
 from pathlib import Path
 
 from PIL import Image, ImageOps, UnidentifiedImageError
 
-SUPPORTED_FORMATS = {"JPEG", "PNG", "WEBP"}
-WORKING_MAX_SIDE = 1280
-MAX_FILE_BYTES = 30 * 1024 * 1024  # 30 MB
+from app.modules.engine.constants import MAX_FILE_BYTES, SUPPORTED_FORMATS, WORKING_MAX_SIDE
+from app.modules.engine.schemas import LoadedImage
 
 
 class ImageLoadError(Exception):
     """Raised when a file can't be used as an input image."""
-
-
-@dataclass(frozen=True)
-class LoadedImage:
-    path: Path
-    format: str  # "JPEG" | "PNG" | "WEBP", detected from content, not extension
-    width: int  # after rotation fix
-    height: int
-    sha256: str  # of the original bytes, to spot duplicates
-    original_bytes: bytes  # untouched file content
-    image: Image.Image  # full-size RGB copy, rotation fixed
-    working: Image.Image  # smaller RGB copy for models (longest side <= WORKING_MAX_SIDE)
 
 
 def load_image(path: str | Path) -> LoadedImage:

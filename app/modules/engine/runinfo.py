@@ -19,6 +19,8 @@ from pathlib import Path
 from typing import Any
 
 from app.core.config import get_settings
+from app.modules.engine.constants import TRACKED_PACKAGES
+from app.modules.engine.helpers import split_csv
 
 
 class RunMeter:
@@ -110,7 +112,7 @@ def machine_info() -> dict[str, Any]:
 @lru_cache(maxsize=1)
 def versions() -> dict[str, str | None]:
     out: dict[str, str | None] = {"python": platform.python_version()}
-    for pkg in ("torch", "transformers", "paddlepaddle", "paddleocr", "pillow"):
+    for pkg in TRACKED_PACKAGES:
         try:
             out[pkg] = metadata.version(pkg)
         except metadata.PackageNotFoundError:
@@ -127,7 +129,7 @@ def engine_settings() -> dict[str, Any]:
         "detect_groups": s.detect_groups,
         "detect_batch_size": s.detect_batch_size,
         "ocr_det_model": s.ocr_det_model,
-        "ocr_rec_models": [m.strip() for m in s.ocr_rec_models.split(",") if m.strip()],
+        "ocr_rec_models": split_csv(s.ocr_rec_models),
         "ocr_min_score": s.ocr_min_score,
     }
 

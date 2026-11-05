@@ -12,7 +12,7 @@ from pathlib import Path
 
 from pydantic import BaseModel
 
-from app.modules.engine.payload import ExtractionPayload
+from app.modules.engine.schemas import ExtractionPayload
 
 
 class ObjectClue(BaseModel):

@@ -4,43 +4,32 @@ The TextReader interface (image in, text lines out) lets us swap PaddleOCR for
 another engine later without touching the pipeline.
 """
 
-import re
-from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
-from typing import Protocol
 
 from PIL import Image
 
 from app.core.config import get_settings
-from app.modules.engine.payload import Box, DetectedObject, TextItem
-
-# Models, cutoffs and recognizers come from settings (.env): OCR_DET_MODEL, OCR_REC_MODELS, ...
-IOU_SAME_LINE = 0.5  # boxes overlapping more than this are the same text line
-# Detected objects worth a closer OCR pass (text is often small inside them):
-# everything in the "text" label group, plus these from other groups.
-TEXT_GROUP = "text"
-EXTRA_TEXT_LABELS = {
-    "license plate", "street sign", "pharmacy sign", "car rental sign", "taxi sign",
-}  # fmt: skip
-CROP_MIN_SIDE = 64  # upscale smaller crops so tiny text is readable
-CROP_PADDING = 0.10
-TEXT_CROP_PADDING = 0.25  # padding around saved text crops, as a share of the line height
-TEXT_CROP_MIN_HEIGHT = 48  # enlarge tiny text lines so they're readable when you open them
-
-ARABIC = re.compile(r"[؀-ۿݐ-ݿࢠ-ࣿﭐ-﷿ﹰ-﻿]")
-LATIN = re.compile(r"[A-Za-z]")
-
-
-@dataclass(frozen=True)
-class TextLine:
-    text: str
-    score: float
-    box: tuple[float, float, float, float]  # x1, y1, x2, y2 in the given image's pixels
-
-
-class TextReader(Protocol):
-    def read(self, image: Image.Image) -> list[TextLine]: ...
+from app.modules.engine.constants import (
+    ARABIC,
+    EXTRA_TEXT_LABELS,
+    IOU_SAME_LINE,
+    LATIN,
+    OCR_CROP_MIN_SIDE,
+    OCR_CROP_PADDING,
+    TEXT_CROP_MIN_HEIGHT,
+    TEXT_CROP_PADDING,
+    TEXT_GROUP,
+)
+from app.modules.engine.helpers import (
+    clamp_box,
+    iou,
+    padded_crop,
+    scale_image,
+    slugify,
+    split_csv,
+)
+from app.modules.engine.schemas import Box, DetectedObject, TextItem, TextLine, TextReader
 
 
 class PaddleTextReader:
@@ -92,7 +81,7 @@ def get_default_reader() -> TextReader:
     settings = get_settings()
     return PaddleTextReader(
         det_model=f"PP-OCRv5_{settings.ocr_det_model}_det",
-        rec_models=[m.strip() for m in settings.ocr_rec_models.split(",") if m.strip()],
+        rec_models=split_csv(settings.ocr_rec_models),
     )
 
 
@@ -117,7 +106,7 @@ def read_text(
     for line, source in sorted(found, key=lambda f: f[0].score, reverse=True):
         if line.score < min_score or not line.text.strip():
             continue
-        if all(_iou(line.box, b.box) < IOU_SAME_LINE for b, _ in best):
+        if all(iou(line.box, b.box) < IOU_SAME_LINE for b, _ in best):
             best.append((line, source))
 
     return [
@@ -125,12 +114,7 @@ def read_text(
             text=line.text.strip(),
             language=detect_language(line.text),
             confidence=round(min(line.score, 1.0), 4),
-            box=Box(
-                x1=round(max(0.0, line.box[0]), 1),
-                y1=round(max(0.0, line.box[1]), 1),
-                x2=round(min(full.width, line.box[2]), 1),
-                y2=round(min(full.height, line.box[3]), 1),
-            ),
+            box=clamp_box(line.box, full.width, full.height),
             source=source,
         )
         for line, source in sorted(best, key=lambda f: (f[0].box[1], f[0].box[0]))  # reading order
@@ -143,20 +127,10 @@ def save_text_crops(full: Image.Image, items: list[TextItem], text_dir: Path) ->
     for i, item in enumerate(items, start=1):
         b = item.box
         pad = (b.y2 - b.y1) * TEXT_CROP_PADDING
-        crop = full.crop(
-            (
-                int(max(0, b.x1 - pad)),
-                int(max(0, b.y1 - pad)),
-                int(min(full.width, b.x2 + pad)),
-                int(min(full.height, b.y2 + pad)),
-            )
-        )
+        crop, _ = padded_crop(full, b, pad, pad)
         if 0 < crop.height < TEXT_CROP_MIN_HEIGHT:
-            scale = TEXT_CROP_MIN_HEIGHT / crop.height
-            crop = crop.resize(
-                (round(crop.width * scale), TEXT_CROP_MIN_HEIGHT), Image.Resampling.LANCZOS
-            )
-        slug = re.sub(r"[^A-Za-z0-9-]+", "_", item.text).strip("_")[:40]  # Arabic -> number only
+            crop = scale_image(crop, TEXT_CROP_MIN_HEIGHT / crop.height)
+        slug = slugify(item.text)  # Arabic -> number only
         path = text_dir / (f"{i:02d}_{slug}.jpg" if slug else f"{i:02d}.jpg")
         crop.save(path, quality=92)
         item.crop_path = path
@@ -173,23 +147,9 @@ def detect_language(text: str) -> str | None:
 def _crop_for_ocr(full: Image.Image, box: Box) -> tuple[Image.Image, tuple[float, float], float]:
     """Padded crop, upscaled if small. Returns crop, its top-left on the full image, and scale."""
     w, h = box.x2 - box.x1, box.y2 - box.y1
-    x1 = int(max(0, box.x1 - w * CROP_PADDING))
-    y1 = int(max(0, box.y1 - h * CROP_PADDING))
-    x2 = int(min(full.width, box.x2 + w * CROP_PADDING))
-    y2 = int(min(full.height, box.y2 + h * CROP_PADDING))
-    crop = full.crop((x1, y1, x2, y2))
+    crop, (x1, y1) = padded_crop(full, box, w * OCR_CROP_PADDING, h * OCR_CROP_PADDING)
     scale = 1.0
-    if min(crop.size) < CROP_MIN_SIDE:
-        scale = CROP_MIN_SIDE / max(1, min(crop.size))
-        crop = crop.resize(
-            (round(crop.width * scale), round(crop.height * scale)), Image.Resampling.LANCZOS
-        )
+    if min(crop.size) < OCR_CROP_MIN_SIDE:
+        scale = OCR_CROP_MIN_SIDE / max(1, min(crop.size))
+        crop = scale_image(crop, scale)
     return crop, (float(x1), float(y1)), scale
-
-
-def _iou(a: tuple[float, ...], b: tuple[float, ...]) -> float:
-    ix = max(0.0, min(a[2], b[2]) - max(a[0], b[0]))
-    iy = max(0.0, min(a[3], b[3]) - max(a[1], b[1]))
-    inter = ix * iy
-    union = (a[2] - a[0]) * (a[3] - a[1]) + (b[2] - b[0]) * (b[3] - b[1]) - inter
-    return inter / union if union > 0 else 0.0
