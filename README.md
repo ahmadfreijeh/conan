@@ -10,6 +10,19 @@ It pulls clues out of the photo, has Claude reason about them, then searches and
 
 Act like a human geo-detective: explain *why* it thinks a photo is from a place, not just give coordinates, and get as close to the exact spot as the clues allow.
 
+## Design Philosophy
+
+Work like a detective: **see → think → look up → confirm**. Each phase hands a clean result to the next, so each one can be built, run and checked by itself.
+
+- **Local first:** cheap, private extraction on the machine before any LLM call.
+- **Evidence over guesses:** every candidate place comes with the clues that support it.
+- **Narrow step by step:** from the whole world to a region, then to a few places, then to one spot.
+- **Small, focused context:** the LLM gets cleaned clues and a few crops, not raw output; in Search, old tool results are summarised so long runs stay within limits.
+- **Saved run state:** every phase reads and writes its results to Postgres, so a run can pause for a person and resume later.
+- **Human in the loop:** a person approves tool use in Search, confirms the result in Verify, and can send the agent back to search deeper.
+
+![Design: Photo → Extract → Reason → Search → Verify → Location](docs/design.svg)
+
 ## Stack
 
 FastAPI, async SQLAlchemy + Postgres, Redis, Arq worker, Strands agent with Claude.
