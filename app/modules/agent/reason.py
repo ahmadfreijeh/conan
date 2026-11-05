@@ -19,7 +19,7 @@ from app.core.config import get_settings
 from app.modules.agent.clues import build_clues
 from app.modules.agent.crops import Crop, pick_crops
 from app.modules.agent.result import ReasonResult
-from app.modules.engine.loader import load_image
+from app.modules.engine.extractors.loader import load_image
 from app.modules.engine.schemas import ExtractionPayload
 
 # Longest side of the photo sent to the model. Larger images get downscaled by the API anyway.

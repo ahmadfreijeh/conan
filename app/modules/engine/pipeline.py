@@ -6,11 +6,11 @@ Kept separate from the CLI so the API and the worker can call it later.
 from pathlib import Path
 
 from app.core.config import get_settings
-from app.modules.engine.detection import detect_objects, get_default_detector, save_crops
+from app.modules.engine.extractors.detection import detect_objects, get_default_detector, save_crops
+from app.modules.engine.extractors.loader import load_image
+from app.modules.engine.extractors.metadata import extract_metadata
+from app.modules.engine.extractors.ocr import get_default_reader, read_text, save_text_crops
 from app.modules.engine.helpers import timed
-from app.modules.engine.loader import load_image
-from app.modules.engine.metadata import extract_metadata
-from app.modules.engine.ocr import get_default_reader, read_text, save_text_crops
 from app.modules.engine.runinfo import RunMeter, append_history
 from app.modules.engine.schemas import (
     Detector,

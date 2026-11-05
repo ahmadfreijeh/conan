@@ -5,7 +5,7 @@ import argparse
 import sys
 from pathlib import Path
 
-from app.modules.engine.loader import ImageLoadError
+from app.modules.engine.extractors.loader import ImageLoadError
 from app.modules.engine.pipeline import run_pipeline
 from app.modules.engine.schemas import ExtractionPayload
 
