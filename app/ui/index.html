@@ -3,164 +3,163 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>CONAN // GEOINT</title>
+<title>Conan · Image geolocation</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
 <style>
+  /* Neo-brutalism: thick ink borders, hard offset shadows, flat bright colours. */
   :root {
-    --bg:#0d100e; --card:#141814; --card2:#191e19; --line:#2a312a; --text:#d6dbd0; --muted:#838c7f;
-    --accent:#c9a23a; --olive:#6f7f3e; --ok:#7fa650; --bad:#c8553d;
-    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    --bg:#dff3ea; --card:#ffffff; --card2:#f6f3ee; --ink:#141414; --text:#141414; --muted:#5b5b5b;
+    --accent:#ff6b4a; --accent2:#7c5cff; --soft:#ffe1d8; --soft2:#e7e0ff; --ok:#1fa36b; --bad:#e5484d; --warn:#ffc53d;
+    --line:2px solid var(--ink); --shadow:4px 4px 0 var(--ink); --shadow-sm:2px 2px 0 var(--ink);
+    --display:"Archivo Black", "Arial Black", sans-serif;
+    --sans:"Space Grotesk", system-ui, -apple-system, sans-serif;
+    --mono:"JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
   }
   * { box-sizing: border-box; }
   html, body { height:100%; }
-  body { margin:0; display:flex; flex-direction:column; overflow:hidden; font:14px/1.5 system-ui, -apple-system, sans-serif; background:var(--bg); color:var(--text);
-         background-image: linear-gradient(rgba(111,127,62,.04) 1px, transparent 1px), linear-gradient(90deg, rgba(111,127,62,.04) 1px, transparent 1px);
-         background-size: 32px 32px; }
-  ::selection { background:var(--olive); color:#fff; }
-  .banner { background:var(--accent); color:#1a1405; font:600 11px/1 var(--mono); letter-spacing:.25em; text-align:center; padding:5px 0; }
-  header { flex:none; display:flex; justify-content:space-between; align-items:flex-end; padding:10px 24px; border-bottom:1px solid var(--line); background:var(--card); }
-  header h1 { margin:0; font:600 17px var(--mono); letter-spacing:.12em; }
-  header h1 span { color:var(--accent); }
-  header h1 { display:flex; align-items:center; gap:10px; }
-  .flag { width:30px; height:15px; flex:none; border:1px solid var(--line); }
-  header p { margin:3px 0 0; color:var(--muted); font-size:12px; }
-  .meta { font:11px/1.6 var(--mono); color:var(--muted); text-align:right; letter-spacing:.06em; }
-  .meta b { color:var(--ok); font-weight:600; }
-  .layout { flex:1; min-height:0; width:100%; display:grid; grid-template-columns: 270px 1fr; grid-template-rows: minmax(0, 1fr); gap:14px; padding:14px 24px; max-width:1500px; margin:0 auto; }
-  main { min-height:0; display:grid; grid-template-columns: 300px 1fr; grid-template-rows: auto minmax(0, 1fr); gap:14px; }
+  body { margin:0; display:flex; flex-direction:column; overflow:hidden; font:14px/1.5 var(--sans); background:var(--bg); color:var(--text);
+         background-image: radial-gradient(rgba(20,20,20,.12) 1px, transparent 1px); background-size: 18px 18px; }
+  ::selection { background:var(--accent2); color:#fff; }
+  header { flex:none; display:flex; justify-content:space-between; align-items:center; padding:14px 24px; border-bottom:3px solid var(--ink); background:var(--card); }
+  header h1 { margin:0; font:28px/1 var(--display); text-transform:uppercase; letter-spacing:.01em; display:flex; align-items:center; gap:12px; }
+  header h1 span { font:700 12px var(--sans); text-transform:none; letter-spacing:0; background:var(--accent); color:var(--ink); border:var(--line); box-shadow:var(--shadow-sm); padding:3px 10px; border-radius:999px; transform:rotate(-2deg); }
+  header p { margin:6px 0 0; color:var(--muted); font-size:13px; }
+  .meta { font:600 13px var(--mono); background:var(--warn); border:var(--line); box-shadow:var(--shadow-sm); padding:4px 10px; border-radius:6px; }
+  .layout { flex:1; min-height:0; width:100%; display:grid; grid-template-columns: 280px 1fr; grid-template-rows: minmax(0, 1fr); gap:20px; padding:20px 24px; max-width:1500px; margin:0 auto; }
+  main { min-height:0; display:grid; grid-template-columns: 300px 1fr; grid-template-rows: auto minmax(0, 1fr); gap:20px; }
   aside { display:flex; flex-direction:column; min-height:0; }
-  .card { background:var(--card); border:1px solid var(--line); border-radius:3px; padding:14px 16px; position:relative; }
-  .card::before { content:""; position:absolute; left:-1px; top:-1px; width:14px; height:14px; border-left:2px solid var(--olive); border-top:2px solid var(--olive); }
-  .card h2 { margin:0 0 12px; font:600 11px var(--mono); text-transform:uppercase; letter-spacing:.18em; color:var(--accent); }
-  .card h2::before { content:"// "; color:var(--olive); }
+  .card { background:var(--card); border:var(--line); border-radius:10px; box-shadow:var(--shadow); padding:16px; }
+  .card h2 { margin:0 0 12px; font:15px var(--display); text-transform:uppercase; letter-spacing:.02em; }
   .wide { grid-column: 1 / -1; }
-  code { font-family:var(--mono); color:var(--accent); }
-  #drop { border:1px dashed var(--olive); border-radius:2px; padding:12px; text-align:center; cursor:pointer; color:var(--muted); font:12px/1.6 var(--mono); letter-spacing:.05em; background:var(--card2); }
-  #drop.over { border-color:var(--accent); color:var(--accent); }
-  #preview { width:100%; height:150px; object-fit:contain; background:#080a08; border-radius:2px; margin-top:10px; display:none; border:1px solid var(--line); }
-  button { margin-top:12px; width:100%; padding:10px; border:1px solid var(--accent); border-radius:2px; background:rgba(201,162,58,.12); color:var(--accent); font:600 12px var(--mono); letter-spacing:.2em; text-transform:uppercase; cursor:pointer; }
-  button:hover:not(:disabled) { background:var(--accent); color:#1a1405; }
-  button:disabled { opacity:.35; cursor:default; }
-  .steps { display:flex; gap:4px; margin-bottom:10px; }
-  .steps div { flex:1; padding:6px 4px; border:1px solid var(--line); border-radius:2px; background:var(--card2); font:10px var(--mono); letter-spacing:.08em; text-transform:uppercase; text-align:center; color:var(--muted); }
-  .steps div.active { border-color:var(--accent); color:var(--accent); animation: pulse 1.2s ease-in-out infinite; }
-  .steps div.done { border-color:var(--olive); color:var(--ok); }
-  .steps div.failed { border-color:var(--bad); color:var(--bad); }
-  @keyframes pulse { 50% { background:rgba(201,162,58,.12); } }
-  #status { font:12px var(--mono); color:var(--muted); margin-bottom:8px; letter-spacing:.04em; }
+  code { font:12px var(--mono); background:var(--soft2); border:1px solid var(--ink); border-radius:4px; padding:0 4px; }
+  #drop { border:2px dashed var(--ink); border-radius:8px; padding:16px; text-align:center; cursor:pointer; font-weight:500; background:var(--card2); transition:background .15s; }
+  #drop:hover, #drop.over { background:var(--soft2); }
+  #preview { width:100%; height:150px; object-fit:contain; background:var(--card2); border-radius:8px; margin-top:10px; display:none; border:var(--line); }
+  button { margin-top:14px; width:100%; padding:10px; border:var(--line); border-radius:8px; background:var(--accent); color:var(--ink); box-shadow:var(--shadow);
+           font:700 14px var(--sans); text-transform:uppercase; letter-spacing:.04em; cursor:pointer; transition:transform .08s, box-shadow .08s; }
+  button:hover:not(:disabled) { transform:translate(-1px, -1px); box-shadow:5px 5px 0 var(--ink); }
+  button:active:not(:disabled) { transform:translate(4px, 4px); box-shadow:none; }
+  button:disabled { opacity:.45; cursor:default; }
+  .steps { display:flex; gap:6px; margin-bottom:12px; }
+  .steps div { flex:1; padding:6px 4px; border:var(--line); border-radius:6px; background:var(--card2); font:700 11px var(--sans); text-align:center; text-transform:uppercase; }
+  .steps div.active { background:var(--warn); box-shadow:var(--shadow-sm); animation: pulse .9s ease-in-out infinite; }
+  .steps div.done { background:var(--ok); color:#fff; }
+  .steps div.failed { background:var(--bad); color:#fff; }
+  @keyframes pulse { 50% { transform:translateY(-2px); } }
+  #status { font:600 13px var(--sans); margin-bottom:10px; }
   #status-card { display:flex; flex-direction:column; min-height:0; }
-  #log { flex:none; height:190px; overflow-y:scroll; background:#080a08; color:#9fc26a; font:12px/1.5 var(--mono); padding:12px; border:1px solid var(--line); border-radius:2px; overflow-x:hidden; white-space:pre-wrap; margin:0; }
+  #log { flex:none; height:190px; overflow-y:scroll; background:var(--ink); color:#b8f5d6; font:12px/1.55 var(--mono); padding:12px; border:var(--line); border-radius:8px; overflow-x:hidden; white-space:pre-wrap; margin:0; }
   .hidden { display:none; }
-  .summary { font-size:15px; margin:0 0 14px; padding-left:10px; border-left:2px solid var(--accent); }
-  .cand { border:1px solid var(--line); border-radius:2px; padding:12px; margin-bottom:8px; background:var(--card2); }
+  .summary { font-size:16px; font-weight:500; margin:0 0 16px; padding:12px 14px; background:var(--soft); border:var(--line); border-radius:8px; box-shadow:var(--shadow-sm); }
+  .cand { border:var(--line); border-radius:8px; padding:12px; margin-bottom:12px; background:var(--card); box-shadow:var(--shadow-sm); }
+  .cand:first-child { background:var(--soft2); }
   .cand-head { display:flex; align-items:center; gap:10px; }
-  .cand-head strong { font-weight:600; }
-  .bar { flex:1; height:4px; background:#232923; overflow:hidden; max-width:200px; }
-  .bar span { display:block; height:100%; background:var(--accent); }
-  .pct { font:12px var(--mono); color:var(--accent); width:40px; text-align:right; }
-  ul { margin:6px 0 0; padding-left:18px; }
-  li { margin:2px 0; }
-  li::marker { color:var(--olive); }
+  .cand-head strong { font-weight:700; font-size:15px; }
+  .bar { flex:1; height:12px; border:var(--line); border-radius:999px; background:var(--card); overflow:hidden; max-width:200px; }
+  .bar span { display:block; height:100%; background:var(--accent); border-right:2px solid var(--ink); }
+  .pct { font:700 13px var(--mono); width:44px; text-align:right; }
+  ul { margin:8px 0 0; padding-left:18px; }
+  li { margin:3px 0; }
+  li::marker { color:var(--accent); }
   .against li { color:var(--bad); }
-  .cols { display:grid; grid-template-columns: repeat(3, 1fr); gap:14px; margin-top:16px; }
+  .cols { display:grid; grid-template-columns: repeat(3, 1fr); gap:16px; margin-top:18px; }
   .cols h2 { margin-bottom:6px; }
   .muted { color:var(--muted); font-size:12px; }
-  .tag { display:inline-block; font:10px var(--mono); text-transform:uppercase; letter-spacing:.08em; padding:1px 5px; border:1px solid var(--olive); color:var(--ok); margin-right:5px; }
+  .tag { display:inline-block; font:700 10px var(--sans); text-transform:uppercase; padding:1px 7px; border:1.5px solid var(--ink); border-radius:999px; background:var(--warn); margin-right:5px; }
   /* history */
-  #history { flex:1; min-height:0; list-style:none; padding:0; margin:0; overflow:auto; }
-  #history li { display:flex; gap:10px; padding:8px; border:1px solid transparent; border-radius:2px; cursor:pointer; margin:0 0 4px; }
-  #history li:hover { background:var(--card2); border-color:var(--line); }
-  #history li.sel { background:var(--card2); border-color:var(--olive); }
-  #history img { width:50px; height:50px; object-fit:cover; border-radius:2px; flex:none; background:var(--card2); filter:grayscale(.35); }
-  #history li:hover img, #history li.sel img { filter:none; }
-  #history .t { font-size:13px; font-weight:600; }
-  #history .id { font:10px var(--mono); color:var(--olive); letter-spacing:.08em; }
-  #history .s { font:11px var(--mono); color:var(--muted); }
+  #history { flex:1; min-height:0; list-style:none; padding:2px 6px 0 0; margin:0; overflow:auto; }
+  #history li { display:flex; gap:10px; padding:8px; border:2px solid transparent; border-radius:8px; cursor:pointer; margin:0 0 6px; }
+  #history li:hover { border-color:var(--ink); background:var(--card2); }
+  #history li.sel { border-color:var(--ink); background:var(--soft2); box-shadow:var(--shadow-sm); }
+  #history img { width:50px; height:50px; object-fit:cover; border-radius:6px; border:var(--line); flex:none; background:var(--card2); }
+  #history .t { font-size:14px; font-weight:700; }
+  #history .id { font:600 11px var(--mono); color:var(--accent2); }
+  #history .s { font-size:12px; color:var(--muted); }
   #history .info { flex:1; min-width:0; }
   #history .info div { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  #history .del { visibility:hidden; width:auto; margin:0; padding:0 6px; border:0; background:none; color:var(--muted); font-size:15px; letter-spacing:0; align-self:flex-start; }
+  #history .del { visibility:hidden; width:auto; margin:0; padding:0 6px; border:0; box-shadow:none; background:none; font-size:18px; align-self:flex-start; }
   #history li:hover .del { visibility:visible; }
-  #history .del:hover { color:var(--bad); background:none; }
-  .hist-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
+  #history .del:hover { color:var(--bad); transform:none; box-shadow:none; }
+  .hist-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; }
   .hist-head h2 { margin:0; }
-  #clear { width:auto; margin:0; padding:3px 8px; font-size:10px; letter-spacing:.12em; background:none; color:var(--bad); border:1px solid rgba(200,85,61,.5); }
+  #clear { width:auto; margin:0; padding:3px 10px; font-size:11px; background:var(--card); box-shadow:var(--shadow-sm); }
   #clear:hover { background:var(--bad); color:#fff; }
-  .dot { display:inline-block; width:7px; height:7px; margin-right:5px; }
-  .dot.done { background:var(--ok); } .dot.failed, .dot.interrupted { background:var(--bad); } .dot.running { background:var(--accent); }
-  /* intel package */
-  .crops { display:flex; flex-wrap:wrap; gap:12px; }
+  .dot { display:inline-block; width:9px; height:9px; border:1.5px solid var(--ink); border-radius:50%; margin-right:5px; vertical-align:-1px; }
+  .dot.done { background:var(--ok); } .dot.failed, .dot.interrupted { background:var(--bad); } .dot.running { background:var(--warn); }
+  /* model input */
+  .crops { display:flex; flex-wrap:wrap; gap:14px; }
   .crops figure { margin:0; width:160px; }
-  .crops img { width:160px; height:160px; object-fit:contain; background:#080a08; border:1px solid var(--line); border-radius:2px; }
-  .crops figcaption { font:11px/1.4 var(--mono); color:var(--muted); margin-top:4px; }
-  #clues { background:#080a08; color:#b9c2ad; font:12px/1.45 var(--mono); padding:12px; border:1px solid var(--line); border-radius:2px; max-height:320px; overflow:auto; white-space:pre-wrap; margin:0; }
-  details summary { cursor:pointer; color:var(--accent); font:12px var(--mono); letter-spacing:.06em; margin:12px 0 6px; }
+  .crops img { width:160px; height:160px; object-fit:contain; background:var(--card2); border:var(--line); border-radius:8px; box-shadow:var(--shadow-sm); }
+  .crops figcaption { font-size:12px; line-height:1.4; color:var(--muted); margin-top:6px; }
+  #clues { background:var(--ink); color:#e9e3ff; font:12px/1.45 var(--mono); padding:12px; border:var(--line); border-radius:8px; max-height:320px; overflow:auto; white-space:pre-wrap; margin:0; }
+  details summary { cursor:pointer; font:700 13px var(--mono); margin:14px 0 8px; }
   /* extraction log */
-  .logtable-wrap { border:1px solid var(--line); border-radius:2px; }
-  table.logtable { width:100%; border-collapse:collapse; font:12px var(--mono); }
-  .logtable th { position:sticky; top:0; background:var(--card2); color:var(--muted); font-weight:600; text-align:left; text-transform:uppercase; letter-spacing:.08em; font-size:10px; padding:7px 10px; border-bottom:1px solid var(--line); }
-  .logtable td { padding:6px 10px; border-bottom:1px solid #1f251f; white-space:nowrap; }
-  .logtable td.num { text-align:right; }
+  .logtable-wrap { border:var(--line); border-radius:8px; overflow:hidden; box-shadow:var(--shadow-sm); }
+  table.logtable { width:100%; border-collapse:collapse; font-size:13px; background:var(--card); }
+  .logtable th { position:sticky; top:0; background:var(--warn); font-weight:700; text-align:left; text-transform:uppercase; font-size:11px; padding:8px 10px; border-bottom:var(--line); }
+  .logtable td { padding:6px 10px; border-bottom:1px solid #d9d4cc; white-space:nowrap; }
+  .logtable td.num { text-align:right; font-family:var(--mono); font-size:12px; }
   .logtable th.num { text-align:right; }
   .logtable tr.link { cursor:pointer; }
-  .logtable tr.link:hover td { background:var(--card2); color:var(--accent); }
-  .logtable .src { font-size:10px; padding:0 4px; border:1px solid var(--line); color:var(--muted); }
-  .logtable .src.ui { border-color:var(--olive); color:var(--ok); }
+  .logtable tr.link:hover td { background:var(--soft2); }
+  .logtable .src { font:700 10px var(--sans); padding:1px 7px; border:1.5px solid var(--ink); border-radius:999px; background:var(--card2); }
+  .logtable .src.ui { background:var(--accent2); color:#fff; }
   /* pager */
-  .pager { display:flex; justify-content:space-between; align-items:center; gap:8px; margin-top:10px; font:11px var(--mono); color:var(--muted); }
-  .pager button { width:auto; margin:0; padding:3px 10px; font-size:11px; letter-spacing:.08em; }
+  .pager { display:flex; justify-content:space-between; align-items:center; gap:8px; margin-top:12px; font:600 12px var(--sans); }
+  .pager button { width:auto; margin:0; padding:3px 10px; font-size:11px; background:var(--card); box-shadow:var(--shadow-sm); }
   .pager.hidden { display:none; }
   /* tabbed bottom panel: the only part that scrolls */
-  #panel { grid-column: 1 / -1; display:flex; flex-direction:column; min-height:0; padding-top:0; }
-  .tabs { flex:none; display:flex; gap:2px; border-bottom:1px solid var(--line); margin:0 -16px 12px; padding:0 12px; }
-  .tabs button { width:auto; margin:0; padding:10px 14px; border:0; border-bottom:2px solid transparent; border-radius:0; background:none; color:var(--muted); font-size:11px; letter-spacing:.16em; }
-  .tabs button:hover:not(:disabled) { background:none; color:var(--text); }
-  .tabs button.on { color:var(--accent); border-bottom-color:var(--accent); }
-  .pane { flex:1; min-height:0; overflow:auto; display:none; }
+  #panel { grid-column: 1 / -1; display:flex; flex-direction:column; min-height:0; }
+  .tabs { flex:none; display:flex; gap:8px; margin:0 0 16px; }
+  .tabs button { width:auto; margin:0; padding:7px 14px; font-size:12px; background:var(--card); box-shadow:var(--shadow-sm); }
+  .tabs button.on { background:var(--accent2); color:#fff; }
+  .pane { flex:1; min-height:0; overflow:auto; display:none; padding:0 6px 6px 0; }
   .pane.on { display:block; }
-  .placeholder { color:var(--muted); font:12px var(--mono); letter-spacing:.06em; }
+  .placeholder { color:var(--muted); font-weight:500; }
   #result:not(.hidden) ~ .placeholder, #inputs:not(.hidden) ~ .placeholder { display:none; }
-  ::-webkit-scrollbar { width:8px; height:8px; } ::-webkit-scrollbar-thumb { background:var(--line); }
-  #log::-webkit-scrollbar-track { background:#0f130f; } #log::-webkit-scrollbar-thumb { background:var(--olive); }
+  ::-webkit-scrollbar { width:10px; height:10px; } ::-webkit-scrollbar-thumb { background:var(--ink); border-radius:999px; border:2px solid var(--card); }
 </style>
 </head>
 <body>
-<div class="banner">RESTRICTED // INTERNAL USE ONLY</div>
 <header>
   <div>
-    <h1><svg class="flag" viewBox="0 0 6 3" role="img" aria-label="Flag of Palestine"><rect width="6" height="1" fill="#000"/><rect y="1" width="6" height="1" fill="#fff"/><rect y="2" width="6" height="1" fill="#007a3d"/><path d="M0 0 L2 1.5 L0 3 Z" fill="#ce1126"/></svg>CONAN <span>//</span> GEOINT ANALYSIS</h1>
-    <p>Image geolocation. Evidence goes through extraction (<code>scripts/full_run.sh</code>), then model assessment.</p>
+    <h1>Conan<span>Image geolocation</span></h1>
+    <p>Upload a photo. It goes through extraction (<code>scripts/full_run.sh</code>), then the model guesses where it was taken.</p>
   </div>
-  <div class="meta">NODE LOCAL-01<br>LINK <b>SECURE</b> · <span id="clock"></span></div>
+  <div class="meta" id="clock"></div>
 </header>
 
 <div class="layout">
   <aside class="card">
-    <div class="hist-head"><h2>Case log</h2><button id="clear" title="Delete every run">Purge all</button></div>
-    <ul id="history"><li class="muted">No cases on file.</li></ul>
+    <div class="hist-head"><h2>History</h2><button id="clear" title="Delete every run">Clear all</button></div>
+    <ul id="history"><li class="muted">No runs yet.</li></ul>
     <div class="pager hidden" id="histPager"></div>
   </aside>
 
   <main>
     <section class="card">
-      <h2>Evidence intake</h2>
-      <div id="drop">DROP IMAGE OR CLICK TO SELECT<br><span class="muted">JPEG · PNG · WEBP · MAX 30 MB</span></div>
+      <h2>Photo</h2>
+      <div id="drop">Drop a photo or click to choose<br><span class="muted">JPEG, PNG or WEBP, up to 30 MB</span></div>
       <input id="file" type="file" accept=".jpg,.jpeg,.png,.webp" hidden>
       <img id="preview" alt="">
-      <button id="run" disabled>Begin analysis</button>
+      <button id="run" disabled>Analyze</button>
     </section>
 
     <section class="card" id="status-card">
-      <h2>Operation status</h2>
+      <h2>Progress</h2>
       <div class="steps" id="steps">
-        <div>01 Init</div><div>02 Config</div><div>03 Extract</div><div>04 Clues</div><div>05 Assess</div>
+        <div>1. Init</div><div>2. Config</div><div>3. Extract</div><div>4. Clues</div><div>5. Reason</div>
       </div>
-      <div id="status">STANDBY. Awaiting evidence.</div>
+      <div id="status">Ready. Choose a photo to start.</div>
       <pre id="log"></pre>
     </section>
 
     <section class="card" id="panel">
       <div class="tabs" id="tabs">
-        <button data-tab="assess" class="on">Assessment</button>
-        <button data-tab="intel">Intel package</button>
+        <button data-tab="assess" class="on">Result</button>
+        <button data-tab="intel">Model input</button>
         <button data-tab="xlogpane">Extraction log</button>
       </div>
 
@@ -174,20 +173,20 @@
             <div><h2>Visual observations</h2><ul id="seen"></ul></div>
           </div>
         </div>
-        <p class="placeholder">NO ASSESSMENT. Run an analysis or open a case.</p>
+        <p class="placeholder">No result yet. Analyze a photo or open a past run.</p>
       </div>
 
       <div class="pane" id="pane-intel">
         <div class="hidden" id="inputs">
           <p class="muted">Sent to the model: the full image, the close-up crops below, and the cleaned clue file.</p>
           <div class="crops" id="crops"></div>
-          <details><summary>&gt; clues.json</summary><pre id="clues"></pre></details>
+          <details><summary>clues.json</summary><pre id="clues"></pre></details>
         </div>
-        <p class="placeholder">NO INTEL PACKAGE for this case.</p>
+        <p class="placeholder">No model input for this run.</p>
       </div>
 
       <div class="pane" id="pane-xlogpane">
-        <p class="muted" style="margin-top:0">Every Phase 1 run (runs.jsonl), from the UI and the CLI. Click a row to open its case if it is still on file.</p>
+        <p class="muted" style="margin-top:0">Every Phase 1 run (runs.jsonl), from the UI and the CLI. Click a row to open its run if it still exists.</p>
         <div class="logtable-wrap">
           <table class="logtable">
             <thead><tr>
@@ -224,7 +223,7 @@ function choose(file) {
   $("preview").src = URL.createObjectURL(file);
   $("preview").style.display = "block";
   $("run").disabled = false;
-  $("status").textContent = `EVIDENCE LOADED: ${file.name}`;
+  $("status").textContent = `Selected: ${file.name}`;
   hideOutput();
   $("log").textContent = "";
   setStep(0, "");
@@ -265,7 +264,7 @@ $("run").onclick = async () => {
   $("log").textContent = "";
   hideOutput();
   setStep(0, "");
-  $("status").textContent = "TRANSMITTING EVIDENCE…";
+  $("status").textContent = "Uploading…";
 
   const form = new FormData();
   form.append("file", chosen);
@@ -285,7 +284,7 @@ $("run").onclick = async () => {
   const started = Date.now();
   let step = 0;
   const timer = setInterval(() => {
-    $("status").textContent = `ANALYSIS IN PROGRESS · T+${Math.round((Date.now() - started) / 1000)}s`;
+    $("status").textContent = `Running… ${Math.round((Date.now() - started) / 1000)}s`;
   }, 1000);
 
   const events = new EventSource(`/api/v1/runs/${body.id}/events`);
@@ -302,10 +301,10 @@ $("run").onclick = async () => {
     const secs = Math.round((Date.now() - started) / 1000);
     if (status === "done") {
       setStep(6, "");
-      $("status").textContent = `COMPLETE · ${secs}s`;
+      $("status").textContent = `Done in ${secs}s`;
     } else {
       setStep(step || 1, "failed");
-      $("status").textContent = `FAILED · T+${secs}s · see log`;
+      $("status").textContent = `Failed after ${secs}s. See the log.`;
     }
     showOutput(await (await fetch(`/api/v1/runs/${body.id}`)).json());
     busy = false;
@@ -358,7 +357,7 @@ async function loadLog() {
     const cells = [
       [new Date(r.started_at).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit" })],
       [null, "src"],
-      [r.name + (r.source === "ui" && !r.run_id ? " (purged)" : "")],
+      [r.name + (r.source === "ui" && !r.run_id ? " (deleted)" : "")],
       [r.size ? r.size.join("×") : "–", "num"],
       [r.objects, "num"],
       [r.text_lines, "num"],
@@ -387,7 +386,7 @@ async function loadHistory() {
   const runs = data.items;
   const ul = $("history");
   ul.replaceChildren();
-  if (!runs.length) { ul.append(el("li", "No cases on file.", "muted")); return; }
+  if (!runs.length) { ul.append(el("li", "No runs yet.", "muted")); return; }
   runs.forEach((r) => {
     const li = el("li");
     li.dataset.id = r.id;
@@ -395,8 +394,8 @@ async function loadHistory() {
     img.src = `/api/v1/runs/${r.id}/files/photo`;
     img.loading = "lazy";
     const info = el("div", null, "info");
-    info.append(el("div", "CASE-" + r.id.slice(0, 6).toUpperCase(), "id"));
-    info.append(el("div", r.top_guess || (r.status === "done" ? "Unresolved" : r.status), "t"));
+    info.append(el("div", "#" + r.id.slice(0, 6), "id"));
+    info.append(el("div", r.top_guess || (r.status === "done" ? "No match" : r.status), "t"));
     const sub = el("div", null, "s");
     sub.append(el("span", null, "dot " + r.status));
     const when = new Date(r.created_at).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
@@ -411,7 +410,7 @@ async function loadHistory() {
     li.onclick = () => openRun(r.id);
     ul.append(li);
   });
-  markSelected(openedId);  // keep the open case highlighted across pages
+  markSelected(openedId);  // keep the open run highlighted across pages
 }
 
 let openedId = null;
@@ -423,12 +422,12 @@ function resetView() {
   $("preview").style.display = "none";
   $("log").textContent = "";
   setStep(0, "");
-  $("status").textContent = "STANDBY. Awaiting evidence.";
+  $("status").textContent = "Ready. Choose a photo to start.";
   hideOutput();
 }
 
 async function deleteRun(id, name) {
-  if (busy || !confirm(`Delete the case for ${name}? Its photo and results are removed.`)) return;
+  if (busy || !confirm(`Delete the run for ${name}? Its photo and results are removed.`)) return;
   const res = await fetch(`/api/v1/runs/${id}`, { method: "DELETE" });
   if (!res.ok) { alert((await res.json()).error?.message || "Could not delete"); return; }
   if (openedId === id) resetView();
@@ -437,7 +436,7 @@ async function deleteRun(id, name) {
 
 $("clear").onclick = async () => {
   if (busy) { alert("Wait for the current run to finish."); return; }
-  if (!confirm("Purge ALL cases? Every photo and result in the log is removed.")) return;
+  if (!confirm("Delete all runs? Every photo and result is removed.")) return;
   await fetch("/api/v1/runs", { method: "DELETE" });
   resetView();
   loadHistory();
@@ -458,7 +457,7 @@ async function openRun(id) {
   $("preview").style.display = "block";
   $("log").textContent = run.log.join("\n");
   setStep(run.status === "done" ? 6 : 1, run.status === "done" ? "" : "failed");
-  $("status").textContent = `CASE-${id.slice(0, 6).toUpperCase()} · ${run.status.toUpperCase()} · ${run.filename} · ${new Date(run.created_at).toLocaleString()}`;
+  $("status").textContent = `#${id.slice(0, 6)} · ${run.status} · ${run.filename} · ${new Date(run.created_at).toLocaleString()}`;
   hideOutput();
   showOutput(run);
 }
@@ -532,7 +531,7 @@ function showInputs(run) {
 }
 
 loadHistory();
-const tick = () => { $("clock").textContent = new Date().toISOString().slice(11, 19) + "Z"; };
+const tick = () => { $("clock").textContent = new Date().toLocaleTimeString(); };
 tick(); setInterval(tick, 1000);
 </script>
 </body>
