@@ -166,7 +166,7 @@ uv run ruff check . && uv run ruff format .
 - `app/repositories` data access (extend `BaseRepository` per model)
 - `app/services` business logic
 - `app/worker` Arq background jobs
-- `app/modules/engine` image extraction engine (loader, metadata, detection, ocr, payload, pipeline, CLI); no FastAPI/DB
+- `app/modules/engine` image extraction engine: `extractors/` (loader, metadata, detection, ocr), `pipeline`, `schemas`, `constants`, `helpers`, CLI; no FastAPI/DB
 - `app/modules/agent` Phase 2 reasoning agent (clues, result shape, Strands agent)
 - `app/tools` reserved for the agent's Phase 3 tools
 - `app/ui` test page (upload + live run); `app/api/v1/runs.py` + `app/services/runs.py` run the script for it
