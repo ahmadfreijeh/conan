@@ -28,7 +28,7 @@ step "3/5 Phase 1: extract clues from $IMAGE"
 uv run python -m app.modules.engine "$IMAGE" --out "$OUT" > /dev/null
 
 step "4/5 Clues sent to the LLM"
-uv run python -m app.modules.agent.clues "$OUT/payload.json"
+uv run python -m app.modules.engine.prepare "$OUT/payload.json"
 
 step "5/5 Phase 2: reason"
 uv run python -m app.modules.engine "$IMAGE" --reason --from-payload "$OUT/payload.json" --out "$OUT"

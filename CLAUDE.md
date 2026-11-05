@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Image geolocation agent: given a photo, extract clues (objects, text, EXIF), guess the region, search candidate places and verify them. Design doc: https://claude.ai/artifact/WyxufsioVRXD8WkcrC14mD
 
-Current state: Phase 1 (extract) in `app/modules/engine/`; Phase 2 (reason) in `app/modules/agent/`: a Strands agent with Claude and no tools yet. `app/tools/` is an empty placeholder for Phase 3 `@tool` functions.
+Current state: Phase 1 (extract) in `app/modules/engine/`; Phase 2 (reason) in `app/modules/agent/`: a Strands agent with Claude and no tools yet. The engine prepares the agent input (`app/modules/engine/prepare.py`: clues, photo, crops); the agent only reasons over it. `app/tools/` is an empty placeholder for Phase 3 `@tool` functions.
 
 ## How we work
 

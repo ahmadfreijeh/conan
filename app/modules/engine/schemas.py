@@ -135,3 +135,48 @@ class TextLine:
 
 class TextReader(Protocol):
     def read(self, image: Image.Image) -> list[TextLine]: ...
+
+
+# --- Agent input (prepare) ----------------------------------------------------------
+
+
+class ObjectClue(BaseModel):
+    label: str
+    group: str
+    count: int
+    confidence: float  # best score among the repeats
+
+
+class TextClue(BaseModel):
+    text: str
+    language: str | None
+    confidence: float
+    where: str  # "image" or the object it was read from, e.g. "sign"
+
+
+class Clues(BaseModel):
+    """The payload cut down to what the LLM needs."""
+
+    metadata: dict  # only the fields that have a value
+    objects: list[ObjectClue]
+    text: list[TextClue]
+
+
+@dataclass
+class Crop:
+    """A close-up of one object, cut from the full-size image."""
+
+    label: str
+    group: str
+    confidence: float
+    where: str  # rough position in the photo, e.g. "top right"
+    image: Image.Image
+
+
+@dataclass
+class AgentInput:
+    """Everything the agent gets: clues, the full photo and the close-up crops (in memory)."""
+
+    clues: Clues
+    photo: Image.Image
+    crops: list[Crop]

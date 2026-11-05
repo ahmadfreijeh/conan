@@ -1,10 +1,12 @@
-"""Phase 2, step 2: the shape of what the reasoning agent returns.
+"""The shape of what the reasoning agent returns.
 
-The LLM must fill this model (structured output), so the result is checked and easy to
+The LLM must fill ReasonResult (structured output), so the result is checked and easy to
 store. Phase 3 reads `search_queries` as its first tool calls.
 """
 
 from pydantic import BaseModel, Field
+
+# --- Reason result (output) ---------------------------------------------------------
 
 
 class Evidence(BaseModel):

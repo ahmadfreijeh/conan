@@ -32,6 +32,27 @@ def clamp_box(box: BoxTuple, width: float, height: float) -> Box:
     )
 
 
+def box_area(b: Box) -> float:
+    return max(0.0, b.x2 - b.x1) * max(0.0, b.y2 - b.y1)
+
+
+def box_overlap(a: Box, b: Box) -> float:
+    """Intersection over the smaller box, so a box inside another counts as a repeat."""
+    w = min(a.x2, b.x2) - max(a.x1, b.x1)
+    h = min(a.y2, b.y2) - max(a.y1, b.y1)
+    if w <= 0 or h <= 0:
+        return 0.0
+    return (w * h) / max(1.0, min(box_area(a), box_area(b)))
+
+
+def box_position(b: Box, width: int, height: int) -> str:
+    """Rough position of a box in the photo, e.g. "top right" or "center"."""
+    cx, cy = (b.x1 + b.x2) / 2 / width, (b.y1 + b.y2) / 2 / height
+    row = "top" if cy < 1 / 3 else "bottom" if cy > 2 / 3 else "middle"
+    col = "left" if cx < 1 / 3 else "right" if cx > 2 / 3 else "center"
+    return "center" if (row, col) == ("middle", "center") else f"{row} {col}"
+
+
 def padded_crop(
     image: Image.Image, box: Box, pad_x: float, pad_y: float
 ) -> tuple[Image.Image, tuple[int, int]]:
@@ -55,6 +76,13 @@ def scale_image(image: Image.Image, scale: float) -> Image.Image:
 def split_csv(value: str) -> list[str]:
     """ "a, b,,c" -> ["a", "b", "c"]."""
     return [part.strip() for part in value.split(",") if part.strip()]
+
+
+def ocr_source_name(source: str) -> str:
+    """OCR source is "image" or "object:<index>_<label>", e.g. "object:33_sign" -> "sign"."""
+    if source.startswith("object:"):
+        return source.split("_", 1)[-1]
+    return source
 
 
 def slugify(text: str, max_len: int = 40) -> str:

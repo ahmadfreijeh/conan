@@ -101,10 +101,10 @@ Missing models also download automatically on the first run.
 
 ## Reasoning agent (Phase 2: Reason)
 
-A Strands agent with Claude (no tools yet) reads the payload plus the photo, links the clues and returns ranked candidate places with evidence, plus search queries for Phase 3. Needs `ANTHROPIC_API_KEY` in `.env`.
+The engine prepares the agent input from the payload (clues, the photo and close-up crops, `app/modules/engine/prepare.py`). A Strands agent with Claude (no tools yet) reads it, links the clues and returns ranked candidate places with evidence, plus search queries for Phase 3. Needs `ANTHROPIC_API_KEY` in `.env`.
 
 ```bash
-uv run python -m app.modules.agent.clues out/photo/payload.json                                          # see the clues sent to the LLM (no API call)
+uv run python -m app.modules.engine.prepare out/photo/payload.json                                          # see the clues sent to the LLM (no API call)
 uv run python -m app.modules.engine samples/photo.jpeg --reason --out out/photo                          # Phase 1 + Phase 2
 uv run python -m app.modules.engine samples/photo.jpeg --reason --from-payload out/photo/payload.json --out out/photo  # Phase 2 only, reuses the saved payload
 ```
@@ -124,7 +124,7 @@ The result prints and, with `--out`, is saved to `out/photo/reason.json`.
 uv sync                                                                  # 1. install (once)
 cp .env.example .env                                                     # 2. config (once), then set ANTHROPIC_API_KEY
 uv run python -m app.modules.engine samples/photo.jpeg --out out/photo           # 3. Phase 1: extract clues (models download on first run)
-uv run python -m app.modules.agent.clues out/photo/payload.json                  # 4. optional: check the clues the LLM will get
+uv run python -m app.modules.engine.prepare out/photo/payload.json                  # 4. optional: check the clues the LLM will get
 uv run python -m app.modules.engine samples/photo.jpeg --reason --from-payload out/photo/payload.json --out out/photo  # 5. Phase 2: reason
 cat out/photo/reason.json                                                # 6. read the result
 ```
@@ -180,8 +180,8 @@ uv run ruff check . && uv run ruff format .
 - `app/repositories` data access (extend `BaseRepository` per model)
 - `app/services` business logic
 - `app/worker` Arq background jobs
-- `app/modules/engine` image extraction engine: `extractors/` (loader, metadata, detection, ocr), `pipeline`, `schemas`, `constants`, `helpers`, CLI; no FastAPI/DB
-- `app/modules/agent` Phase 2 reasoning agent (clues, result shape, Strands agent)
+- `app/modules/engine` image extraction engine: `extractors/` (loader, metadata, detection, ocr), `pipeline`, `prepare` (clues + crops for the agent), `schemas`, `constants`, `helpers`, CLI; no FastAPI/DB
+- `app/modules/agent` Phase 2 reasoning agent: takes the input the engine prepared and returns the result (`reason`, `schemas`, `constants` with the prompt, `helpers`)
 - `app/tools` reserved for the agent's Phase 3 tools
 - `app/ui` test page (upload + live run); `app/api/v1/runs.py` + `app/services/runs.py` run the script for it
 

@@ -164,5 +164,24 @@ TEXT_CROP_MIN_HEIGHT = 48  # enlarge tiny text lines so they're readable when yo
 ARABIC = re.compile(r"[؀-ۿݐ-ݿࢠ-ࣿﭐ-﷿ﹰ-﻿]")
 LATIN = re.compile(r"[A-Za-z]")
 
+# --- Agent input (prepare) ---------------------------------------------------------
+# Groups most likely to hold a location clue, best first. Others (food, interior, plants...)
+# are visible enough in the full photo, so they get no close-up crop.
+CROP_GROUP_PRIORITY = [
+    "text",
+    "street",
+    "commerce",
+    "landmarks",
+    "vehicles",
+    "buildings",
+    "architecture",
+    "rooftops",
+    "symbols",
+]
+AGENT_CROP_MIN_SIDE = 24  # skip crops smaller than this (pixels); nothing readable inside
+AGENT_CROP_PADDING = 0.15  # add 15% around the box so the context is visible
+AGENT_CROP_MAX_OVERLAP = 0.5  # skip a box that mostly overlaps one already picked
+AGENT_CROP_MIN_SEND_SIDE = 512  # enlarge smaller crops to this (longest side); reads better
+
 # --- Run info -----------------------------------------------------------------------
 TRACKED_PACKAGES = ("torch", "transformers", "paddlepaddle", "paddleocr", "pillow")
