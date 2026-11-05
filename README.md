@@ -160,9 +160,16 @@ uv run ruff check . && uv run ruff format .
 
 Pull raw clues from the photo, all local: objects (Grounding DINO), text (PaddleOCR, Arabic + English) and EXIF metadata. Details: [docs/phase-1-extract.md](docs/phase-1-extract.md).
 
-### Phase 2: Reason ✅
+### Phase 2: Reason 🚧 (in progress)
 
 A Strands agent with Claude reads the clues and the photo, then returns ranked candidate places with evidence and search queries for Phase 3.
+
+- [x] Clean clues from the Phase 1 payload for the LLM
+- [x] Send the photo plus close-up crops of key objects
+- [x] Return ranked places with confidence, evidence and search queries
+- [x] Test UI to run it and see the result
+- [ ] Test on more photos and improve the prompt
+- [ ] Check that confidence scores match how often it is right
 
 ### Phase 3: Search
 
