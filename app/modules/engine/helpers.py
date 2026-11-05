@@ -2,7 +2,7 @@
 
 import re
 import time
-from collections.abc import Iterator
+from collections.abc import Generator
 from contextlib import contextmanager
 
 from PIL import Image
@@ -84,7 +84,7 @@ def to_float(value) -> float | None:
 
 
 @contextmanager
-def timed(timings: dict[str, float], step: str) -> Iterator[None]:
+def timed(timings: dict[str, float], step: str) -> Generator[None, None, None]:
     """Record how long the block took, in ms, under timings[step]."""
     start = time.perf_counter()
     try:
