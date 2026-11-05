@@ -4,7 +4,7 @@ Drops what the LLM does not need (run info, pixel boxes, file paths), merges rep
 objects and repeated text, and keeps confidence so weak clues stay marked as weak.
 
 Try it on a saved payload (no models run):
-    uv run python -m app.agent.clues out/photo/payload.json
+    uv run python -m app.modules.agent.clues out/photo/payload.json
 """
 
 import sys
@@ -12,7 +12,7 @@ from pathlib import Path
 
 from pydantic import BaseModel
 
-from app.engine.payload import ExtractionPayload
+from app.modules.engine.payload import ExtractionPayload
 
 
 class ObjectClue(BaseModel):
@@ -80,7 +80,7 @@ def build_clues(payload: ExtractionPayload) -> Clues:
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
-        sys.exit("usage: python -m app.agent.clues <payload.json>")
+        sys.exit("usage: python -m app.modules.agent.clues <payload.json>")
     saved = ExtractionPayload.model_validate_json(Path(sys.argv[1]).read_text())
     clues = build_clues(saved)
     out = clues.model_dump_json(indent=2)

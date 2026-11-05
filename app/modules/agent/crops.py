@@ -8,7 +8,7 @@ from dataclasses import dataclass
 
 from PIL import Image
 
-from app.engine.payload import Box, DetectedObject
+from app.modules.engine.payload import Box, DetectedObject
 
 # Groups most likely to hold a location clue, best first. Others (food, interior, plants...)
 # are visible enough in the full photo.

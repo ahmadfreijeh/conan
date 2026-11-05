@@ -15,12 +15,12 @@ from PIL import Image
 from strands import Agent
 from strands.models.anthropic import AnthropicModel
 
-from app.agent.clues import build_clues
-from app.agent.crops import Crop, pick_crops
-from app.agent.result import ReasonResult
 from app.core.config import get_settings
-from app.engine.loader import load_image
-from app.engine.payload import ExtractionPayload
+from app.modules.agent.clues import build_clues
+from app.modules.agent.crops import Crop, pick_crops
+from app.modules.agent.result import ReasonResult
+from app.modules.engine.loader import load_image
+from app.modules.engine.payload import ExtractionPayload
 
 # Longest side of the photo sent to the model. Larger images get downscaled by the API anyway.
 IMAGE_MAX_SIDE = 1568
