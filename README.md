@@ -1,5 +1,9 @@
 # conan
 
+> 🧭 **[How I built it →](docs/how-i-built-it.md)** scaffold first, then one phase at a time, with diagrams.
+
+[![How I built conan](docs/how-i-built-it.svg)](docs/how-i-built-it.md)
+
 Image geolocation agent: give it a photo and it works out where the photo was taken.
 
 ## What it does
