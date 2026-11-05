@@ -70,6 +70,57 @@ Missing models also download automatically on the first run.
 | `OCR_MIN_SCORE` | `0.5` | Min text reading confidence |
 | `ENGINE_RUNS_LOG` | `out/runs.jsonl` | Run history file (written when `--out` is used) |
 
+## Reasoning agent (Phase 2: Reason)
+
+A Strands agent with Claude (no tools yet) reads the payload plus the photo, links the clues and returns ranked candidate places with evidence, plus search queries for Phase 3. Needs `ANTHROPIC_API_KEY` in `.env`.
+
+```bash
+uv run python -m app.agent.clues out/photo/payload.json                                          # see the clues sent to the LLM (no API call)
+uv run python -m app.engine samples/photo.jpeg --reason --out out/photo                          # Phase 1 + Phase 2
+uv run python -m app.engine samples/photo.jpeg --reason --from-payload out/photo/payload.json --out out/photo  # Phase 2 only, reuses the saved payload
+```
+
+The result prints and, with `--out`, is saved to `out/photo/reason.json`.
+
+| Setting | Default | Meaning |
+|---|---|---|
+| `ANTHROPIC_API_KEY` | (empty) | Required for `--reason` |
+| `REASON_MODEL` | `claude-sonnet-5-5` | Claude model; `claude-opus-5-5` for hard photos |
+| `REASON_MAX_TOKENS` | `16000` | Max length of the answer |
+| `REASON_MAX_CROPS` | `6` | Close-up crops of detected objects (signs, street, shops, vehicles, buildings) sent with the photo; `0` = photo only |
+
+## Full cycle
+
+```bash
+uv sync                                                                  # 1. install (once)
+cp .env.example .env                                                     # 2. config (once), then set ANTHROPIC_API_KEY
+uv run python -m app.engine samples/photo.jpeg --out out/photo           # 3. Phase 1: extract clues (models download on first run)
+uv run python -m app.agent.clues out/photo/payload.json                  # 4. optional: check the clues the LLM will get
+uv run python -m app.engine samples/photo.jpeg --reason --from-payload out/photo/payload.json --out out/photo  # 5. Phase 2: reason
+cat out/photo/reason.json                                                # 6. read the result
+```
+
+Steps 3 and 5 can be one command: `uv run python -m app.engine samples/photo.jpeg --reason --out out/photo`.
+
+Or run all steps with one script (it stops early if `ANTHROPIC_API_KEY` is missing):
+
+```bash
+scripts/full_run.sh                              # samples/photo.jpeg -> out/photo
+scripts/full_run.sh samples/cafe.jpg out/cafe    # any photo and output folder
+```
+
+## Test UI
+
+```bash
+uv run fastapi dev app/main.py    # then open http://127.0.0.1:8000
+```
+
+Upload a photo and press Run. The server runs `scripts/full_run.sh` on it, streams the log live (steps 1/5 to 5/5), then shows the result: summary, ranked places with confidence and evidence, search queries, OCR fixes. It also shows what was sent to the LLM: the close-up crops and the cleaned clues.
+
+The left panel is the history: every upload, newest first, with its top guess. Click one to see its photo, log, result and inputs again. It is read from `out/uploads/<run id>/` (photo, `run.json`, `log.txt`, `payload.json`, `clues.json`, `sent/`, `reason.json`), so it survives restarts. At the bottom, the extraction log lists every Phase 1 run from `out/runs.jsonl` (UI and CLI): time, image, size, objects, text lines, detect/OCR/total time, peak RAM and device; hover a row for its settings, click a UI row to open that case. Hover a run and click × to delete it, or use "Delete all" (both ask first; a run that is still going is kept). One run at a time; local testing only.
+
+From the CLI, `--reason --out <dir>` saves the same `clues.json` and `sent/` (crops + `crops.json`) before calling the LLM.
+
 ## Dev
 
 ```bash
@@ -87,4 +138,6 @@ uv run ruff check . && uv run ruff format .
 - `app/services` business logic
 - `app/worker` Arq background jobs
 - `app/engine` image extraction engine (loader, metadata, detection, ocr, payload, pipeline, CLI); no FastAPI/DB
-- `app/agent`, `app/tools` reserved for the Strands agent and its tools
+- `app/agent` Phase 2 reasoning agent (clues, result shape, Strands agent)
+- `app/tools` reserved for the agent's Phase 3 tools
+- `app/ui` test page (upload + live run); `app/api/v1/runs.py` + `app/services/runs.py` run the script for it
