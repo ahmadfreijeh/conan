@@ -26,6 +26,12 @@ class Settings(BaseSettings):
     ocr_min_score: float = 0.5  # drop readings below this confidence
     engine_runs_log: str = "out/runs.jsonl"  # one line per run with --out, to compare runs
 
+    # Reasoning agent (app/agent)
+    anthropic_api_key: str = ""
+    reason_model: str = "claude-sonnet-5-5"  # switch to claude-opus-5-5 for hard photos
+    reason_max_tokens: int = 16000
+    reason_max_crops: int = 6  # close-up object crops sent with the photo; 0 = none
+
     @property
     def is_local(self) -> bool:
         return self.app_env == "local"
