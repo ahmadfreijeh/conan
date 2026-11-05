@@ -25,12 +25,12 @@ if ! grep -qE '^ANTHROPIC_API_KEY=.+' .env; then
 fi
 
 step "3/5 Phase 1: extract clues from $IMAGE"
-uv run python -m app.engine "$IMAGE" --out "$OUT" > /dev/null
+uv run python -m app.modules.engine "$IMAGE" --out "$OUT" > /dev/null
 
 step "4/5 Clues sent to the LLM"
-uv run python -m app.agent.clues "$OUT/payload.json"
+uv run python -m app.modules.agent.clues "$OUT/payload.json"
 
 step "5/5 Phase 2: reason"
-uv run python -m app.engine "$IMAGE" --reason --from-payload "$OUT/payload.json" --out "$OUT"
+uv run python -m app.modules.engine "$IMAGE" --reason --from-payload "$OUT/payload.json" --out "$OUT"
 
 printf '\nDone. Files in %s: payload.json, reason.json, crops/, text/\n' "$OUT"

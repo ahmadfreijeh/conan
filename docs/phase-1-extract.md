@@ -7,9 +7,9 @@ Status: **done**. Built step by step; each step is reviewed before the next star
 ## In and out
 
 - **In:** one photo (JPEG, PNG or WebP).
-- **Out:** `payload.json` with four parts: `image` (size, format, hash), `metadata` (EXIF GPS, time, device, source app), `objects` (label, box, crop) and `text` (OCR text, language, box). Plus a `run` part with timings and machine use. Shape: `app/engine/payload.py`.
+- **Out:** `payload.json` with four parts: `image` (size, format, hash), `metadata` (EXIF GPS, time, device, source app), `objects` (label, box, crop) and `text` (OCR text, language, box). Plus a `run` part with timings and machine use. Shape: `app/modules/engine/payload.py`.
 
-Run it: `uv run python -m app.engine samples/photo.jpeg --out out/photo` (more options in the [README](../README.md#image-engine-phase-1-extract)).
+Run it: `uv run python -m app.modules.engine samples/photo.jpeg --out out/photo` (more options in the [README](../README.md#image-engine-phase-1-extract)).
 
 | # | Step | What it does | Status |
 |---|---|---|---|
@@ -26,9 +26,9 @@ Run it: `uv run python -m app.engine samples/photo.jpeg --out out/photo` (more o
 
 - Formats: JPEG, PNG, WebP only (no HEIC yet).
 - The original file is never modified; we work on copies so EXIF stays intact.
-- Engine lives in `app/engine/`, independent of FastAPI, DB and auth.
+- Engine lives in `app/modules/engine/`, independent of FastAPI, DB and auth.
 - OCR recognizers: `PP-OCRv6_medium_rec` (English/Latin + Chinese) and `arabic_PP-OCRv5_mobile_rec` (Arabic). Passing a model name to `PaddleOCR(...)` makes it ignore `lang`, so models are named explicitly.
-- Object labels: 284 words in 16 groups (`LABEL_GROUPS` in `app/engine/detection.py`), sent in batches of 25 (max 78 of 256 prompt tokens). No people or faces. OCR zooms into every object in the "text" group.
+- Object labels: 284 words in 16 groups (`LABEL_GROUPS` in `app/modules/engine/detection.py`), sent in batches of 25 (max 78 of 256 prompt tokens). No people or faces. OCR zooms into every object in the "text" group.
 - Grounding DINO (object detection) is not DINOv2 (photo similarity, used in Phase 4: Verify).
 
 ## Known limits

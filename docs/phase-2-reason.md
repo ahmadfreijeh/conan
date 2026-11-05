@@ -7,14 +7,14 @@ Status: **in progress**. Works end to end; testing on more photos.
 ## In and out
 
 - **In:** `payload.json` from Phase 1, plus the photo.
-- **Out:** `reason.json` (shape: `app/agent/result.py`):
+- **Out:** `reason.json` (shape: `app/modules/agent/result.py`):
   - `summary`: best guess in one or two sentences
   - `candidates`: 1 to 5 places, ranked (country → city → area), each with confidence, evidence and clues against it
   - `search_queries`: what Phase 3 should look up first, tagged `places`, `web`, `wiki` or `map`
   - `corrected_text`: OCR mistakes the model fixed, e.g. `DOCKTAILS → COCKTAILS`
   - `seen_in_image`: clues the model saw that Phase 1 missed
 
-Run it: `uv run python -m app.engine samples/photo.jpeg --reason --out out/photo` (more options in the [README](../README.md#reasoning-agent-phase-2-reason)).
+Run it: `uv run python -m app.modules.engine samples/photo.jpeg --reason --out out/photo` (more options in the [README](../README.md#reasoning-agent-phase-2-reason)).
 
 ## How it works
 
@@ -46,10 +46,10 @@ On `samples/photo.jpeg`, a street café:
 
 | # | Step | What it does | Status |
 |---|---|---|---|
-| 1 | Clean clues | Turn the payload into a short clue list (`app/agent/clues.py`) | Done |
-| 2 | Result shape | Fixed output the model must fill (`app/agent/result.py`) | Done |
-| 3 | Agent | Strands + Claude, photo + clues in, result out (`app/agent/reason.py`) | Done |
-| 4 | Close-up crops | Send the most useful object crops with the photo (`app/agent/crops.py`) | Done |
+| 1 | Clean clues | Turn the payload into a short clue list (`app/modules/agent/clues.py`) | Done |
+| 2 | Result shape | Fixed output the model must fill (`app/modules/agent/result.py`) | Done |
+| 3 | Agent | Strands + Claude, photo + clues in, result out (`app/modules/agent/reason.py`) | Done |
+| 4 | Close-up crops | Send the most useful object crops with the photo (`app/modules/agent/crops.py`) | Done |
 | 5 | Test UI | Upload a photo, watch the run, see what went in and came out | Done |
 | 6 | More photos | Test on harder photos, improve the prompt | In progress |
 | 7 | Honest confidence | Check that 0.9 means right about 9 times in 10 | Planned |

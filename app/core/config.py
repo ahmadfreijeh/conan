@@ -13,7 +13,7 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/conan"
     redis_url: str = "redis://localhost:6379/0"
 
-    # Image engine (app/engine)
+    # Image engine (app/modules/engine)
     engine_device: Literal["auto", "mps", "cpu"] = "auto"  # for DINO; auto = Mac GPU if available
     detect_box_threshold: float = 0.30  # min confidence that a box holds an object
     detect_text_threshold: float = 0.25  # min confidence that the box matches the word
@@ -26,7 +26,7 @@ class Settings(BaseSettings):
     ocr_min_score: float = 0.5  # drop readings below this confidence
     engine_runs_log: str = "out/runs.jsonl"  # one line per run with --out, to compare runs
 
-    # Reasoning agent (app/agent)
+    # Reasoning agent (app/modules/agent)
     anthropic_api_key: str = ""
     reason_model: str = "claude-sonnet-5-5"  # switch to claude-opus-5-5 for hard photos
     reason_max_tokens: int = 16000

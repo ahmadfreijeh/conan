@@ -55,11 +55,11 @@ Runs every extraction step on a photo (load, EXIF, object detection, OCR) and pr
 ### Run
 
 ```bash
-uv run python -m app.engine samples/photo.jpeg                          # print the payload
-uv run python -m app.engine samples/photo.jpeg --out out/photo          # also save files (see below)
-uv run python -m app.engine samples/photo.jpeg --no-detect              # skip object detection
-uv run python -m app.engine samples/photo.jpeg --no-ocr                 # skip text reading
-uv run python -m app.engine samples/photo.jpeg --no-detect --no-ocr     # load + EXIF only (instant, no models)
+uv run python -m app.modules.engine samples/photo.jpeg                          # print the payload
+uv run python -m app.modules.engine samples/photo.jpeg --out out/photo          # also save files (see below)
+uv run python -m app.modules.engine samples/photo.jpeg --no-detect              # skip object detection
+uv run python -m app.modules.engine samples/photo.jpeg --no-ocr                 # skip text reading
+uv run python -m app.modules.engine samples/photo.jpeg --no-detect --no-ocr     # load + EXIF only (instant, no models)
 ```
 
 With `--out out/photo` you get:
@@ -104,9 +104,9 @@ Missing models also download automatically on the first run.
 A Strands agent with Claude (no tools yet) reads the payload plus the photo, links the clues and returns ranked candidate places with evidence, plus search queries for Phase 3. Needs `ANTHROPIC_API_KEY` in `.env`.
 
 ```bash
-uv run python -m app.agent.clues out/photo/payload.json                                          # see the clues sent to the LLM (no API call)
-uv run python -m app.engine samples/photo.jpeg --reason --out out/photo                          # Phase 1 + Phase 2
-uv run python -m app.engine samples/photo.jpeg --reason --from-payload out/photo/payload.json --out out/photo  # Phase 2 only, reuses the saved payload
+uv run python -m app.modules.agent.clues out/photo/payload.json                                          # see the clues sent to the LLM (no API call)
+uv run python -m app.modules.engine samples/photo.jpeg --reason --out out/photo                          # Phase 1 + Phase 2
+uv run python -m app.modules.engine samples/photo.jpeg --reason --from-payload out/photo/payload.json --out out/photo  # Phase 2 only, reuses the saved payload
 ```
 
 The result prints and, with `--out`, is saved to `out/photo/reason.json`.
@@ -123,13 +123,13 @@ The result prints and, with `--out`, is saved to `out/photo/reason.json`.
 ```bash
 uv sync                                                                  # 1. install (once)
 cp .env.example .env                                                     # 2. config (once), then set ANTHROPIC_API_KEY
-uv run python -m app.engine samples/photo.jpeg --out out/photo           # 3. Phase 1: extract clues (models download on first run)
-uv run python -m app.agent.clues out/photo/payload.json                  # 4. optional: check the clues the LLM will get
-uv run python -m app.engine samples/photo.jpeg --reason --from-payload out/photo/payload.json --out out/photo  # 5. Phase 2: reason
+uv run python -m app.modules.engine samples/photo.jpeg --out out/photo           # 3. Phase 1: extract clues (models download on first run)
+uv run python -m app.modules.agent.clues out/photo/payload.json                  # 4. optional: check the clues the LLM will get
+uv run python -m app.modules.engine samples/photo.jpeg --reason --from-payload out/photo/payload.json --out out/photo  # 5. Phase 2: reason
 cat out/photo/reason.json                                                # 6. read the result
 ```
 
-Steps 3 and 5 can be one command: `uv run python -m app.engine samples/photo.jpeg --reason --out out/photo`.
+Steps 3 and 5 can be one command: `uv run python -m app.modules.engine samples/photo.jpeg --reason --out out/photo`.
 
 Or run all steps with one script (it stops early if `ANTHROPIC_API_KEY` is missing):
 
@@ -166,8 +166,8 @@ uv run ruff check . && uv run ruff format .
 - `app/repositories` data access (extend `BaseRepository` per model)
 - `app/services` business logic
 - `app/worker` Arq background jobs
-- `app/engine` image extraction engine (loader, metadata, detection, ocr, payload, pipeline, CLI); no FastAPI/DB
-- `app/agent` Phase 2 reasoning agent (clues, result shape, Strands agent)
+- `app/modules/engine` image extraction engine (loader, metadata, detection, ocr, payload, pipeline, CLI); no FastAPI/DB
+- `app/modules/agent` Phase 2 reasoning agent (clues, result shape, Strands agent)
 - `app/tools` reserved for the agent's Phase 3 tools
 - `app/ui` test page (upload + live run); `app/api/v1/runs.py` + `app/services/runs.py` run the script for it
 
