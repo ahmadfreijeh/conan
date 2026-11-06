@@ -46,14 +46,14 @@ def main(argv: list[str] | None = None) -> int:
 
     import anthropic
 
-    from app.modules.agent.reason import reason  # only import Strands when needed
+    from app.modules.agent.reason import default_approve, reason  # import Strands when needed
     from app.modules.engine.prepare import prepare_for_agent, save_agent_input
 
     try:
         agent_input = prepare_for_agent(payload)
         if args.out:
             save_agent_input(agent_input, args.out)  # clues.json + sent/, to check the input
-        result = reason(agent_input)
+        result = reason(agent_input, approve=default_approve())
     except (RuntimeError, anthropic.APIError) as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1

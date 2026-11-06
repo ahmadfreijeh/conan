@@ -1,7 +1,7 @@
 """The shape of what the reasoning agent returns.
 
 The LLM must fill ReasonResult (structured output), so the result is checked and easy to
-store. Phase 3 reads `search_queries` as its first tool calls.
+store. `search_queries` lists lookups the agent could not run itself (no tool for them yet).
 """
 
 from pydantic import BaseModel, Field
@@ -18,6 +18,8 @@ class Candidate(BaseModel):
     country: str
     city: str | None = None
     area: str | None = Field(None, description="Neighbourhood, street or square, if known")
+    lat: float | None = Field(None, description="Latitude, only if a map lookup found the place")
+    lon: float | None = Field(None, description="Longitude, only if a map lookup found the place")
     confidence: float = Field(ge=0, le=1)
     evidence: list[Evidence] = Field(description="Clues that support this candidate")
     against: list[str] = Field([], description="Clues that argue against it")
@@ -38,4 +40,6 @@ class ReasonResult(BaseModel):
         [], description="Location clues the model saw in the photo that Phase 1 missed"
     )
     candidates: list[Candidate] = Field(description="Ranked, most likely first")
-    search_queries: list[SearchQuery] = Field(description="What Phase 3 should look up first")
+    search_queries: list[SearchQuery] = Field(
+        description="Searches you could not run with your tools (web, wiki), most useful first"
+    )

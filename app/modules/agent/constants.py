@@ -32,6 +32,26 @@ narrow the region. Say which clue supports which conclusion.
 allows. Do not invent a city or street the evidence does not support; leave it empty instead.
 4. Confidence must be honest: 0.9+ only with a decisive clue (GPS, a unique name, a famous \
 landmark). Note clues that argue against each candidate.
-5. Suggest search_queries that would confirm or rule out the candidates: business names, \
-street or square names, landmarks. You cannot run them yourself yet.
+5. Check candidates with your map tools before you answer:
+   - If the metadata has GPS, call reverse_geocode first; it names the exact spot.
+   - For business names, streets, squares and landmarks, call find_place with your best \
+city and country guess. Try the corrected OCR spelling, and the local-language name too.
+   - The map returns its closest guesses, which can be a different place (another \
+brasserie, another square). Check that the result's name and address really match the clue.
+   - A place counts as confirmed only if a lookup found it; then fill lat and lon from the \
+result. Never make up coordinates. A failed lookup is weak evidence against, not proof.
+   - If a lookup finds nothing, do not give up on the first try. Change one thing at a \
+time: fix the OCR spelling, try the local-language name, drop generic words (brasserie, \
+café, restaurant, hotel), search the street or square instead of the business, or widen the \
+area (neighbourhood, then city, then country only). Follow the hints in the tool result.
+   - After 3 misses on the same clue, move on to another clue.
+   - Lookups are limited; when a tool says the limit is reached, answer with what you have.
+6. In search_queries, list only the searches your tools cannot do (web search for sign \
+text, phone numbers or brands; wiki for landmarks).
 """
+
+# --- Tool approval over a pipe (test UI) ------------------------------------------
+# When the run has no terminal (the UI runs it as a subprocess), an approval request is one
+# stdout line: APPROVAL_PREFIX + JSON {"tool", "input"}. The answer comes back as one stdin
+# line: yes, no or all. app/services/runs.py watches for this prefix.
+APPROVAL_PREFIX = "APPROVAL "
