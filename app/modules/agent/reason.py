@@ -10,18 +10,38 @@ import sys
 from collections.abc import Callable
 
 from strands import Agent
+from strands.models import CacheConfig
 from strands.models.anthropic import AnthropicModel
 
 from app.core.config import get_settings
-from app.modules.agent.constants import APPROVAL_PREFIX, SYSTEM_PROMPT
+from app.modules.agent import spend
+from app.modules.agent.constants import (
+    APPROVAL_PREFIX,
+    NO_TOOLS_TIP,
+    SYSTEM_PROMPT,
+    TOOL_TIPS,
+)
 from app.modules.agent.helpers import image_bytes
 from app.modules.agent.hooks import ALL, HOOKS, NO, YES, start_run
 from app.modules.agent.schemas import ReasonResult
-from app.modules.agent.tools import TOOLS
+from app.modules.agent.tools import select_tools, tool_name
 from app.modules.engine.schemas import AgentInput
 
 
-def build_agent() -> Agent:
+def tool_names_from_settings() -> list[str] | None:
+    """AGENT_TOOLS as a list: None when unset (all tools), [] when empty (no tools)."""
+    raw = get_settings().agent_tools
+    return None if raw is None else [n.strip() for n in raw.split(",") if n.strip()]
+
+
+def system_prompt(tools: list) -> str:
+    """The prompt with one hint per tool that is on; a tool that is off is not named."""
+    tips = [f"   - {TOOL_TIPS[tool_name(t)]}" for t in tools if tool_name(t) in TOOL_TIPS]
+    return SYSTEM_PROMPT.replace("{tool_tips}", "\n".join(tips) or f"   - {NO_TOOLS_TIP}")
+
+
+def build_agent(tool_names: list[str] | None = None) -> Agent:
+    """The agent with the chosen tools: tool_names, else AGENT_TOOLS, else all of them."""
     settings = get_settings()
     if not settings.anthropic_api_key:
         raise RuntimeError("ANTHROPIC_API_KEY is not set in .env")
@@ -29,11 +49,18 @@ def build_agent() -> Agent:
         client_args={"api_key": settings.anthropic_api_key},
         model_id=settings.reason_model,
         max_tokens=settings.reason_max_tokens,
+        # Cache the system prompt, the tools and the conversation so far (photo included):
+        # every model call after the first in a run reads them at ~10% of the input price.
+        cache_config=CacheConfig(strategy="anthropic", system_prompt_ttl=True, tools_ttl=True)
+        if settings.reason_cache
+        else None,
     )
+    tools = select_tools(tool_names if tool_names is not None else tool_names_from_settings())
+    print(f"tools: {', '.join(tool_name(t) for t in tools) or 'none'}", file=sys.stderr)
     return Agent(
         model=model,
-        system_prompt=SYSTEM_PROMPT,
-        tools=TOOLS,
+        system_prompt=system_prompt(tools),
+        tools=tools,
         hooks=HOOKS,
         callback_handler=None,
     )
@@ -67,15 +94,20 @@ Approve = Callable[[dict], str]
 
 
 def reason(
-    agent_input: AgentInput, agent: Agent | None = None, approve: Approve | None = None
+    agent_input: AgentInput,
+    agent: Agent | None = None,
+    approve: Approve | None = None,
+    tool_names: list[str] | None = None,
 ) -> ReasonResult:
     """Send the prepared input to the agent and return its structured answer.
 
     If a tool needs approval, the agent pauses (stop_reason "interrupt"). Each waiting call
     is passed to `approve`, then the agent resumes with the answers. No `approve` = "no".
+    tool_names picks the tools (None = AGENT_TOOLS, else all); see build_agent().
     """
-    agent = agent or build_agent()
+    agent = agent or build_agent(tool_names)
     start_run(agent)
+    before = dict(agent.event_loop_metrics.accumulated_usage)
     result = agent(_message(agent_input), structured_output_model=ReasonResult)
     while result.stop_reason == "interrupt":
         answers = [
@@ -88,9 +120,25 @@ def reason(
             for i in result.interrupts or []
         ]
         result = agent(answers, structured_output_model=ReasonResult)
+    _record_usage(
+        agent.model.config["model_id"], before, agent.event_loop_metrics.accumulated_usage
+    )
     if not isinstance(result.structured_output, ReasonResult):
         raise RuntimeError("The model did not return a structured result")
     return result.structured_output
+
+
+def _record_usage(model: str, before: dict, after: dict) -> None:
+    """Save this run's tokens and cost to the spend log, and print one line on stderr."""
+    keys = ("inputTokens", "cacheReadInputTokens", "cacheWriteInputTokens", "outputTokens")
+    used = {k: after.get(k, 0) - before.get(k, 0) for k in keys}
+    line = spend.record(model, used)
+    usd = f"${line['usd']:.4f}" if line["usd"] is not None else "unknown price"
+    print(
+        f"tokens: input {line['input']}, cache read {line['cache_read']}, "
+        f"cache write {line['cache_write']}, output {line['output']} ({usd})",
+        file=sys.stderr,
+    )
 
 
 ANSWERS = {"y": YES, "yes": YES, "n": NO, "no": NO, "a": ALL, "all": ALL}
