@@ -6,12 +6,13 @@ from collections.abc import AsyncIterator
 from pathlib import Path
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, Header, Query, UploadFile
+from fastapi import APIRouter, Form, Header, Query, UploadFile
 from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel
 
 from app.core.errors import AppError
 from app.modules.agent import spend
+from app.modules.agent.tools import select_tools, tool_list
 from app.services.runs import run_manager
 
 router = APIRouter(prefix="/runs", tags=["runs"])
@@ -39,14 +40,25 @@ def _page(items: list[dict], page: int, size: int) -> dict:
 
 
 @router.post("", status_code=201)
-async def start_run(file: UploadFile) -> dict:
+async def start_run(
+    file: UploadFile,
+    tools: Annotated[str | None, Form()] = None,
+) -> dict:
+    """Upload a photo and start a run. tools: comma-separated names the agent gets
+    (left out = all, "" = none); a tool that is off is not given to the agent at all."""
     suffix = Path(file.filename or "").suffix.lower()
     if suffix not in ALLOWED_SUFFIXES:
         raise AppError("Upload a JPEG, PNG or WebP photo")
     data = await file.read()
     if len(data) > MAX_UPLOAD_BYTES:
         raise AppError("Photo is larger than 30 MB")
-    run_id = await run_manager.start(data, suffix, file.filename or "photo")
+    names = None if tools is None else [n.strip() for n in tools.split(",") if n.strip()]
+    if names is not None:
+        try:
+            select_tools(names)  # 400 on an unknown name, before the run starts
+        except RuntimeError as exc:
+            raise AppError(str(exc)) from None
+    run_id = await run_manager.start(data, suffix, file.filename or "photo", names)
     return {"id": run_id}
 
 
@@ -60,6 +72,12 @@ async def list_runs(page: int = Query(1, ge=1), size: int = Query(10, ge=1, le=1
 async def extraction_log(page: int = Query(1, ge=1), size: int = Query(15, ge=1, le=100)) -> dict:
     """Phase 1 run stats from runs.jsonl (time, size, objects, timings, memory), newest first."""
     return _page(run_manager.extraction_log(), page, size)
+
+
+@router.get("/tools")
+async def list_tools() -> list[dict]:
+    """The agent's tools for the UI toggles: name, short description, needs approval."""
+    return tool_list()
 
 
 @router.get("/spend")

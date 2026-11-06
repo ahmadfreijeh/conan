@@ -73,7 +73,10 @@ class RunManager:
 
     # ---- start ---------------------------------------------------------------
 
-    async def start(self, data: bytes, suffix: str, filename: str) -> str:
+    async def start(
+        self, data: bytes, suffix: str, filename: str, tools: list[str] | None = None
+    ) -> str:
+        """Start a run. tools = the tool names the agent gets (None = all, [] = none)."""
         if any(not r.finished for r in self._live.values()):
             raise RunBusyError("Another run is still going; wait for it to finish")
 
@@ -89,17 +92,21 @@ class RunManager:
             image=image.name,
             created_at=datetime.now(UTC).isoformat(),
             status="running",
+            tools=tools,
         )
 
         run = LiveRun(id=run_id, dir=run_dir)
         self._live[run_id] = run
-        task = asyncio.create_task(self._execute(run, image))
+        task = asyncio.create_task(self._execute(run, image, tools))
         self._tasks.add(task)  # keep a reference so the task is not garbage-collected
         task.add_done_callback(self._tasks.discard)
         return run_id
 
-    async def _execute(self, run: LiveRun, image: Path) -> None:
+    async def _execute(self, run: LiveRun, image: Path, tools: list[str] | None) -> None:
         status = "failed"
+        env = {**os.environ, "PYTHONUNBUFFERED": "1"}  # print lines as they happen
+        if tools is not None:
+            env["AGENT_TOOLS"] = ",".join(tools)  # read by build_agent(); "" = no tools
         try:
             proc = await asyncio.create_subprocess_exec(
                 "bash",
@@ -110,7 +117,7 @@ class RunManager:
                 stdin=asyncio.subprocess.PIPE,  # approval answers go here
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.STDOUT,
-                env={**os.environ, "PYTHONUNBUFFERED": "1"},  # print lines as they happen
+                env=env,
             )
             run.proc = proc
             assert proc.stdout is not None

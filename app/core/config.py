@@ -36,6 +36,8 @@ class Settings(BaseSettings):
     reason_cache: bool = True  # prompt caching: repeat sends of prompt, tools, photo cost ~10%
 
     # Agent tools (app/modules/agent/tools)
+    # Tools the agent gets, comma-separated (e.g. find_place,wiki_nearby); unset = all, "" = none
+    agent_tools: str | None = None
     agent_max_lookups: int = 10  # tool calls per run; more are cancelled (agent/hooks.py)
     # Ask a person before tool calls: listed = tools in NEEDS_APPROVAL, all = every tool, none
     agent_approval: Literal["listed", "all", "none"] = "listed"

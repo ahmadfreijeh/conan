@@ -178,6 +178,15 @@ How it behaves:
 - **Cache:** the same request in one run returns the saved answer (no network call). Failed answers are not cached.
 - **Errors:** a timeout or bad answer comes back as `{"error": ...}`, so the agent can retry or move on instead of crashing.
 
+### Choosing tools per run
+
+A tool that is **on** is available: the agent calls it only if it helps. A tool that is **off** is removed from the run completely: it is not given to the agent and the prompt does not name it (each tool's hint in the prompt comes from `TOOL_TIPS` in `app/modules/agent/constants.py`, only for tools that are on). With no tools, the agent answers from the photo and the clues alone. The run log starts with `tools: ...`.
+
+```bash
+uv run python -m app.modules.engine samples/photo.jpeg --reason --tools find_place,wiki_nearby --out out/photo
+uv run python -m app.modules.engine samples/photo.jpeg --reason --tools "" --out out/photo   # no tools
+```
+
 ### Tool approval
 
 A person can approve tool calls before they run. Tools named in `NEEDS_APPROVAL` (`app/modules/agent/tools/__init__.py`) ask every time; all tools so far are free, so the list is empty for now. Answers: **yes** (run it), **no** (skip it, the agent goes on) or **all** (allow this tool for the rest of the run).
@@ -201,6 +210,7 @@ Agent (subprocess)            RunManager (server)              Browser
 
 | Setting | Default | Meaning |
 |---|---|---|
+| `AGENT_TOOLS` | (unset) | Tools the agent gets, comma-separated, e.g. `find_place,wiki_nearby`; unset = all, empty = none. CLI: `--tools`; UI: the Tools toggles |
 | `AGENT_MAX_LOOKUPS` | `10` | Tool calls per run; more are cancelled |
 | `AGENT_APPROVAL` | `listed` | Who asks first: `listed` = tools in `NEEDS_APPROVAL`, `all` = every tool (handy to test), `none` = nothing asks |
 | `AGENT_APPROVAL_TIMEOUT` | `300` | UI only: seconds to wait for an answer, then no; `0` = wait forever. Read when the server starts |
@@ -247,6 +257,8 @@ Upload a photo and press Run. The server runs `scripts/full_run.sh` on it, strea
 The left panel is the history: every upload, newest first, with its top guess. Click one to see its photo, log, result and inputs again. It is read from `out/uploads/<run id>/` (photo, `run.json`, `log.txt`, `payload.json`, `clues.json`, `sent/`, `reason.json`), so it survives restarts. At the bottom, the extraction log lists every Phase 1 run from `out/runs.jsonl` (UI and CLI): time, image, size, objects, text lines, detect/OCR/total time, peak RAM and device; hover a row for its settings, click a UI row to open that case. Hover a run and click × to delete it, or use "Delete all" (both ask first; a run that is still going is kept). One run at a time; local testing only.
 
 Tool approval: if a tool needs approval (`NEEDS_APPROVAL`, or `AGENT_APPROVAL=all` in `.env` to ask for every tool), the Progress card shows the call the agent wants to make with Yes / No / Allow all. The run waits until you answer, or `AGENT_APPROVAL_TIMEOUT` seconds (default 300) pass; then it counts as No. The log shows each request and answer as `[approval] ...` lines. See [Tool approval](#tool-approval).
+
+Tools: a Tools card under the Photo card lists every tool with a toggle and a short description per tool (from `GET /api/v1/runs/tools`, the first paragraph of each docstring). Only the tools that are on go to the run; the choice is kept in the browser, and a new tool starts on. Hover a run in the history to see which tools it had (saved in `run.json`).
 
 Top bar: last run's tokens and cost, total spent, and (with `CREDIT_BUDGET` set) about how much credit is left, e.g. `Last run: 54k tokens · $0.059 | Spent: $1.42 | Left: ~$18.58 of $20`. "Left" turns red under 10%. It comes from `GET /api/v1/runs/spend`.
 
@@ -313,6 +325,7 @@ Give the agent tools to look up the candidate places, using many sources (maps, 
 - [x] Tool approval in the CLI and the test UI, with a timeout
 - [x] Candidate places get coordinates when a lookup confirms them
 - [x] Wiki tools: `wiki_search` (with fuzzy / wildcard / fragment search for OCR words), `wiki_summary`, `wiki_nearby`
+- [x] Choose tools per run (UI toggles, `--tools`, `AGENT_TOOLS`); a tool that is off is removed from the run and the prompt
 - [x] Prompt caching and spend tracking (tokens, USD, budget left in the UI)
 - [ ] `wiki_features(kind, region)`: list features of one kind in a region from Wikidata (e.g. every mountain in Istanbul Province, with coordinates and height), then check each with `wiki_nearby` / `wiki_summary`. The tool builds the query from a fixed menu of kinds (mountain, lake, island, beach, lighthouse, castle, bridge, mosque, church, tower), so the agent never writes SPARQL
 - [ ] Web search tool

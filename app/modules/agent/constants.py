@@ -32,12 +32,8 @@ narrow the region. Say which clue supports which conclusion.
 allows. Do not invent a city or street the evidence does not support; leave it empty instead.
 4. Confidence must be honest: 0.9+ only with a decisive clue (GPS, a unique name, a famous \
 landmark). Note clues that argue against each candidate.
-5. Check candidates with your map tools before you answer:
-   - If the metadata has GPS, call reverse_geocode first; it names the exact spot.
-   - For business names, streets, squares and landmarks, call find_place with your best \
-city and country guess. Try the corrected OCR spelling, and the local-language name too.
-   - The map returns its closest guesses, which can be a different place (another \
-brasserie, another square). Check that the result's name and address really match the clue.
+5. Check candidates with your tools before you answer:
+{tool_tips}
    - A place counts as confirmed only if a lookup found it; then fill lat and lon from the \
 result. Never make up coordinates. A failed lookup is weak evidence against, not proof.
    - If a lookup finds nothing, do not give up on the first try. Change one thing at a \
@@ -46,9 +42,30 @@ café, restaurant, hotel), search the street or square instead of the business, 
 area (neighbourhood, then city, then country only). Follow the hints in the tool result.
    - After 3 misses on the same clue, move on to another clue.
    - Lookups are limited; when a tool says the limit is reached, answer with what you have.
-6. In search_queries, list only the searches your tools cannot do (web search for sign \
-text, phone numbers or brands; wiki for landmarks).
+6. In search_queries, list only the searches your tools cannot do (e.g. web search for sign \
+text, phone numbers or brands).
 """
+
+# One hint per tool, put in the prompt at {tool_tips} only when that tool is on for the run
+# (a tool that is off is not named anywhere). A tool with no entry here gets no hint.
+TOOL_TIPS = {
+    "reverse_geocode": "If the metadata has GPS, call reverse_geocode first; it names the exact "
+    "spot.",
+    "find_place": "For business names, streets, squares and landmarks, call find_place with "
+    "your best city and country guess. Try the corrected OCR spelling, and the local-language "
+    "name too. The map returns its closest guesses, which can be a different place (another "
+    "brasserie, another square): check that the result's name and address really match.",
+    "wiki_search": "For landmarks or a loose description, call wiki_search. For OCR words "
+    "that are misread or cut off, use word~, word* or intitle:/fragment/.",
+    "wiki_summary": "Call wiki_summary on a candidate article to check its description "
+    "against the photo; its names in other languages help other searches.",
+    "wiki_nearby": "With a candidate point, call wiki_nearby (with a keyword such as church "
+    "or tower) to check that landmarks seen in the photo are really there.",
+}
+NO_TOOLS_TIP = (
+    "You have no lookup tools this run: answer from the photo and the clues, leave lat and "
+    "lon empty, and put the searches you would run in search_queries."
+)
 
 # --- Tool approval over a pipe (test UI) ------------------------------------------
 # When the run has no terminal (the UI runs it as a subprocess), an approval request is one
