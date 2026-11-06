@@ -1,36 +1,52 @@
 # Agent (Phase 2: Reason, Phase 3: Search)
 
-The reasoning agent and its tools. Input comes from the [image engine](../engine/README.md). Back to the [main README](../../../README.md).
+Clues in, ranked places with evidence out. A Strands agent with Claude reads the clues the [image engine](../engine/README.md) prepared, links them, looks places up with its tools and says where the photo is likely from and why. Back to the [main README](../../../README.md).
 
-## Reasoning (Phase 2)
+Status: **in progress**. Reasoning works end to end; map and Wikipedia tools are built. What's left: [Roadmap](../../../README.md#roadmap).
 
-The engine prepares the agent input from the payload (clues, the photo and close-up crops, `app/modules/engine/prepare.py`). A Strands agent with Claude reads it, links the clues, checks places with its map and Wikipedia tools (see [Tools](#tools-phase-3-search)) and returns ranked candidate places with evidence, coordinates when a lookup confirmed them, and the searches it could not run yet. Needs `ANTHROPIC_API_KEY` in `.env`.
+## In and out
 
-```bash
-uv run python -m app.modules.engine.prepare out/photo/payload.json                                          # see the clues sent to the LLM (no API call)
-uv run python -m app.modules.engine samples/photo.jpeg --reason --out out/photo                          # Phase 1 + Phase 2
-uv run python -m app.modules.engine samples/photo.jpeg --reason --from-payload out/photo/payload.json --out out/photo  # Phase 2 only, reuses the saved payload
+- **In:** the photo, cleaned clues and up to 6 close-up crops (built from `payload.json` by `app/modules/engine/prepare.py`).
+- **Out:** `reason.json` (shape: `schemas.py`):
+  - `summary`: best guess in one or two sentences
+  - `candidates`: 1 to 5 places, ranked (country → city → area), each with confidence, evidence, clues against it, and coordinates when a lookup confirmed them
+  - `search_queries`: searches it could not run yet, tagged `places`, `web`, `wiki` or `map`
+  - `corrected_text`: OCR mistakes the model fixed, e.g. `DOCKTAILS → COCKTAILS`
+  - `seen_in_image`: clues the model saw that Phase 1 missed
+  - `sources`: every link a tool returned (see [Sources](#sources))
+
+## How it works
+
+```mermaid
+flowchart LR
+    P[payload.json] --> C[Clean clues]
+    P --> K[Pick close-up crops]
+    I[Photo] --> A[Claude agent]
+    C --> A
+    K --> A
+    A <--> T[Tools<br/>maps, Wikipedia]
+    A --> R[reason.json]
 ```
 
-The result prints and, with `--out`, is saved to `out/photo/reason.json`. At the end it prints the run's tokens and cost, e.g. `tokens: input 3000, cache read 40000, cache write 8000, output 2500 ($0.0590)`.
+1. **Clean the clues:** drop what the model does not need (pixel boxes, file paths, run info), merge repeats, keep confidence so weak clues stay weak.
+2. **Pick crops:** the photo is shrunk before the model sees it, so small signs become unreadable. Close-ups of signs, shopfronts, streets and vehicles are cut from the full-size photo and sent with it.
+3. **Reason and look up:** the agent fixes OCR mistakes, adds what it sees itself, links clues (language, brands, names, building style) and checks places with its [tools](#tools). Strands runs the loop: Claude picks a tool call, the tool runs, the result goes back, Claude decides again. Our code never decides the order.
+4. **Structured answer:** the model must fill a fixed shape, so the result is checked and the next phase can read it directly.
 
-**Prompt caching** is on: the prompt, the tools and the conversation so far (photo and crops included) are cached on Anthropic's side, so each model call after the first in a run reads them at about 10% of the input price. The cache lives 5 minutes after its last use and survives app restarts; changing the prompt, a tool docstring or the model starts a new one.
+Example on `samples/photo.jpeg` (a street café): sign read "A LA PLACE S^T GEORGES", plus Haussmann-style buildings, red awnings, rattan bistro chairs → **Paris, Place Saint-Georges (9th arrondissement), confidence 0.93**.
 
-**Spend:** every run adds one line (model, tokens, USD) to `out/spend.jsonl` (CLI and UI runs). Prices per model are in `PRICES` (`app/modules/agent/spend.py`). The test UI shows it in the top bar.
+## Run
 
-| Setting | Default | Meaning |
-|---|---|---|
-| `ANTHROPIC_API_KEY` | (empty) | Required for `--reason` |
-| `REASON_MODEL` | `claude-sonnet-5-5` | Claude model; `claude-opus-5-5` for hard photos |
-| `REASON_MAX_TOKENS` | `16000` | Max length of the answer |
-| `REASON_MAX_CROPS` | `6` | Close-up crops of detected objects (signs, street, shops, vehicles, buildings) sent with the photo; `0` = photo only |
-| `REASON_CACHE` | `true` | Prompt caching; `false` to turn it off (e.g. to compare cost) |
-| `SPEND_LOG` | `out/spend.jsonl` | One line per reasoning run: tokens and USD |
-| `CREDIT_BUDGET` | `0` | USD you topped up; the UI shows budget minus spent. `0` = hidden. An estimate: Anthropic has no balance API, so update it after a top-up |
+Needs `ANTHROPIC_API_KEY` in `.env`.
 
-## Tools (Phase 3: Search)
+```bash
+uv run python -m app.modules.engine samples/photo.jpeg --reason --out out/photo                                       # Phase 1 + 2
+uv run python -m app.modules.engine samples/photo.jpeg --reason --from-payload out/photo/payload.json --out out/photo  # reuse a saved payload
+```
 
-The agent can look things up while it reasons. Strands runs a loop: Claude picks a tool call, the tool runs, the result goes back to Claude, and Claude decides again (another call, another tool, or the answer). Our code never decides the order. Plan and status: [docs/phase-3-search.md](../../../docs/phase-3-search.md).
+The result prints and, with `--out`, is saved to `out/photo/reason.json`, next to `clues.json` and `sent/` (what was sent), so a wrong answer can be traced to its input. Every lookup is printed, e.g. `-> find_place(name="Place Saint-Georges", city="Paris", country="France")`, and the run ends with its tokens and cost, e.g. `tokens: input 3000, cache read 40000, cache write 8000, output 2500 ($0.0590)`.
+
+## Tools
 
 | Tool | Source | What it does |
 |---|---|---|
@@ -38,9 +54,9 @@ The agent can look things up while it reasons. Strands runs a loop: Claude picks
 | `reverse_geocode(lat, lon)` | OpenStreetMap Nominatim | Coordinates (e.g. EXIF GPS) → the address there |
 | `wiki_search(query, lang)` | Wikipedia (free, no key) | Free text or a loose description ("clock tower downtown Beirut") → top articles with a short intro and coordinates. Handles misread OCR words (see below) |
 | `wiki_summary(title, lang)` | Wikipedia | One article → description, full intro, coordinates and its name in other languages (local names help `find_place`) |
-| `wiki_nearby(lat, lon, radius, keyword)` | Wikipedia | Coordinates from any tool or EXIF → Wikipedia places around them, closest first, with distance; `keyword` keeps e.g. only churches |
+| `wiki_nearby(lat, lon, radius, keyword)` | Wikipedia | Coordinates → Wikipedia places around them, closest first, with distance; `keyword` keeps e.g. only churches |
 
-The tools chain: one finds a candidate point, the others check it against the photo.
+The tools chain: one finds a candidate point, the others check it against the photo. If the photo has EXIF GPS, the agent starts there.
 
 ```
 find_place / wiki_search / EXIF GPS ──► candidate point (lat, lon)
@@ -51,7 +67,7 @@ find_place / wiki_search / EXIF GPS ──► candidate point (lat, lon)
    does it look like the photo?   is the church in the photo there? which street and area?
 ```
 
-Try the tools by hand (no LLM):
+Try them by hand (no LLM):
 
 ```bash
 uv run python -m app.modules.agent.tools "Place de l'Etoile" --city Beirut
@@ -72,22 +88,20 @@ Misread or cut-off OCR words in `wiki_search` (tested on Wikipedia search):
 
 `?` and a leading `*` do not work. When a search finds nothing, the hints suggest these retries built from the query.
 
-During a `--reason` run every lookup is printed, e.g. `-> find_place(name="Place Saint-Georges", city="Paris", country="France")`.
+How the tools behave:
 
-How it behaves:
-
-- **Retries:** if nothing is found, `find_place` and the wiki tools return hints (fix the spelling, drop generic words, search the street, widen the area) and the prompt tells the agent to change one thing at a time and move on after 3 misses on one clue.
-- **Lookup limit:** at most `AGENT_MAX_LOOKUPS` tool calls per run, enforced in code; after that the agent is told to answer with what it has.
+- **Retries:** if nothing is found, the tools return hints (fix the spelling, drop generic words, search the street, widen the area); the prompt says change one thing at a time and move on after 3 misses on one clue.
+- **Lookup limit:** at most `AGENT_MAX_LOOKUPS` tool calls per run, enforced in code; then the agent answers with what it has.
 - **Cache:** the same request in one run returns the saved answer (no network call). Failed answers are not cached.
-- **Errors:** a timeout or bad answer comes back as `{"error": ...}`, so the agent can retry or move on instead of crashing.
+- **Errors:** a timeout or bad answer comes back as `{"error": ...}`, so the agent retries or moves on instead of crashing.
 
 ### Sources
 
-Every link a tool returns during the run (Wikipedia articles, OpenStreetMap places) is kept by the `collect_sources` hook and saved as `sources` in `reason.json`: title, url, `wiki` or `map`, the tool, and `used` (its name appears in the answer). The links come only from real tool results, never from the model, so none is made up. The test UI lists them at the end of the Result tab, grouped by Wikipedia and Map, ★ = used, used first.
+Every link a tool returns (Wikipedia articles, OpenStreetMap places) is kept by the `collect_sources` hook and saved as `sources` in `reason.json`: title, url, `wiki` or `map`, the tool, and `used` (its name appears in the answer). Links come only from real tool results, never from the model, so none is made up. The test UI lists them at the end of the Result tab, ★ = used.
 
 ### Choosing tools per run
 
-A tool that is **on** is available: the agent calls it only if it helps. A tool that is **off** is removed from the run completely: it is not given to the agent and the prompt does not name it (each tool's hint in the prompt comes from `TOOL_TIPS` in `app/modules/agent/constants.py`, only for tools that are on). With no tools, the agent answers from the photo and the clues alone. The run log starts with `tools: ...`.
+A tool that is **on** is available: the agent calls it only if it helps. A tool that is **off** is removed completely: not given to the agent and not named in the prompt (each tool's hint comes from `TOOL_TIPS` in `constants.py`). With no tools, the agent answers from the photo and clues alone. The run log starts with `tools: ...`.
 
 ```bash
 uv run python -m app.modules.engine samples/photo.jpeg --reason --tools find_place,wiki_nearby --out out/photo
@@ -96,12 +110,10 @@ uv run python -m app.modules.engine samples/photo.jpeg --reason --tools "" --out
 
 ### Tool approval
 
-A person can approve tool calls before they run. Tools named in `NEEDS_APPROVAL` (`app/modules/agent/tools/__init__.py`) ask every time; all tools so far are free, so the list is empty for now. Answers: **yes** (run it), **no** (skip it, the agent goes on) or **all** (allow this tool for the rest of the run).
+Tools named in `NEEDS_APPROVAL` (`tools/__init__.py`) ask a person before every call; all tools so far are free, so the list is empty for now (`AGENT_APPROVAL=all` asks for every tool, handy to test). Answers: **yes** (run it), **no** (skip it, the agent goes on) or **all** (allow this tool for the rest of the run).
 
 - **CLI:** asks in the terminal: `Allow find_place(...)? [y]es / [n]o / [a]ll:`.
-- **Test UI:** a box in the Progress card with Yes / No / Allow all. With no answer in `AGENT_APPROVAL_TIMEOUT` seconds it counts as no.
-
-How an approval travels in the UI:
+- **Test UI:** a box in the Progress card with Yes / No / Allow all. No answer in `AGENT_APPROVAL_TIMEOUT` seconds counts as no.
 
 ```
 Agent (subprocess)            RunManager (server)              Browser
@@ -113,13 +125,31 @@ Agent (subprocess)            RunManager (server)              Browser
 7. reads "yes", resumes  ◄──     "yes" to the agent's stdin
 ```
 
-### Settings (`.env`, all optional)
+### Add a tool
+
+1. Write it in its own file in `tools/` with `@tool`; the docstring is what Claude reads to decide when to use it.
+2. If it calls a web API, use `ApiClient` (`tools/http.py`): timeout, User-Agent, wait between calls, cache, and errors as `ToolError`.
+3. Add it to `TOOLS` in `tools/__init__.py` and a hint to `TOOL_TIPS` in `constants.py`. If it is paid or slow, add its name to `NEEDS_APPROVAL` too.
+
+## Cost
+
+- **Prompt caching** is on: the prompt, the tools and the conversation so far (photo and crops included) are cached on Anthropic's side, so each model call after the first in a run reads them at about 10% of the input price. The cache lives 5 minutes after its last use; changing the prompt, a tool docstring or the model starts a new one.
+- **Spend:** every run adds one line (model, tokens, USD) to `out/spend.jsonl` (CLI and UI). Prices per model are in `PRICES` (`spend.py`). The test UI shows it in the top bar.
+
+## Settings (`.env`)
 
 | Setting | Default | Meaning |
 |---|---|---|
-| `AGENT_TOOLS` | (unset) | Tools the agent gets, comma-separated, e.g. `find_place,wiki_nearby`; unset = all, empty = none. CLI: `--tools`; UI: the Tools toggles |
+| `ANTHROPIC_API_KEY` | (empty) | Required for `--reason` |
+| `REASON_MODEL` | `claude-sonnet-5-5` | Claude model; `claude-opus-5-5` for hard photos |
+| `REASON_MAX_TOKENS` | `16000` | Max length of the answer |
+| `REASON_MAX_CROPS` | `6` | Close-up crops sent with the photo; `0` = photo only |
+| `REASON_CACHE` | `true` | Prompt caching; `false` to turn it off (e.g. to compare cost) |
+| `SPEND_LOG` | `out/spend.jsonl` | One line per reasoning run: tokens and USD |
+| `CREDIT_BUDGET` | `0` | USD you topped up; the UI shows budget minus spent. `0` = hidden. An estimate: Anthropic has no balance API, so update it after a top-up |
+| `AGENT_TOOLS` | (unset) | Tools the agent gets, comma-separated; unset = all, empty = none. CLI: `--tools`; UI: the Tools toggles |
 | `AGENT_MAX_LOOKUPS` | `10` | Tool calls per run; more are cancelled |
-| `AGENT_APPROVAL` | `listed` | Who asks first: `listed` = tools in `NEEDS_APPROVAL`, `all` = every tool (handy to test), `none` = nothing asks |
+| `AGENT_APPROVAL` | `listed` | Who asks first: `listed` = tools in `NEEDS_APPROVAL`, `all` = every tool, `none` = nothing asks |
 | `AGENT_APPROVAL_TIMEOUT` | `300` | UI only: seconds to wait for an answer, then no; `0` = wait forever. Read when the server starts |
 | `PLACES_URL` | `https://nominatim.openstreetmap.org` | Map search service |
 | `PLACES_TIMEOUT` | `10` | Seconds per map lookup |
@@ -127,8 +157,26 @@ Agent (subprocess)            RunManager (server)              Browser
 | `WIKI_URL` | `https://{lang}.wikipedia.org/w` | Wikipedia API base; `{lang}` = `en`, `fr`, `ar`... |
 | `WIKI_TIMEOUT` | `10` | Seconds per Wikipedia lookup |
 
-### Add a tool
+## Decisions
 
-1. Write it in its own file in `app/modules/agent/tools/` with `@tool`; the docstring is what Claude reads to decide when to use it.
-2. If it calls a web API, use `ApiClient` (`tools/http.py`): timeout, User-Agent, wait between calls, cache, and errors as `ToolError`.
-3. Add it to `TOOLS` in `tools/__init__.py`. If it is paid or slow, add its name to `NEEDS_APPROVAL` too.
+- **Clean before sending:** fewer tokens and less noise than raw Phase 1 output.
+- **Crops, not a bigger photo:** the API shrinks large images anyway; crops keep detail only where it matters.
+- **Honest confidence:** the prompt allows 0.9+ only with a decisive clue (GPS, a unique name, a famous landmark). No made-up city or street.
+- **One agent that grows:** Phase 3 only adds tools to the Phase 2 agent; nothing else changes.
+
+## Open discussions
+
+### Which sources for Search?
+
+No single source finds everything, so each kind of clue should go to the source best at it.
+
+| Source | Good for | Example clue | Status |
+|---|---|---|---|
+| Maps (OpenStreetMap, Google Places) | Shop and venue names, streets, squares | "Brasserie Place St Georges" | OSM built |
+| Wikipedia / Wikidata | Landmarks, monuments, famous buildings | A clock tower or a mosque dome | Wikipedia built |
+| Web search | Sign text, phone numbers, brands, events | "+961" phone number on a sign | Planned |
+| Street photos (Mapillary, Street View) | What a spot looks like from the street | Does the shopfront match? | Planned |
+| Reviews and listings | Visitors' photos of cafés, hotels, venues | Same tables, menu or interior | Planned |
+
+- Free first (OpenStreetMap, Mapillary, Wikipedia), or paid (Google) for better coverage?
+- How many search rounds before it stops and asks a person?
