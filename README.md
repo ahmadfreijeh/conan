@@ -226,6 +226,10 @@ Model input: the close-up crops sent to the LLM, with label, group, score and po
 
 ![Model input tab](assets/3.png)
 
+### Known issues
+
+- **Live log repeats a few lines (Test UI, to fix later).** While a run is live, the lines right after the last tool approval (`[approval] yes`, `-> find_place(...)`, `<- find_place: ...`) can show twice. It is only the display: the tool runs once, and `log.txt` and the history view are clean, so is the stream of a finished run (`curl -N http://127.0.0.1:8000/api/v1/runs/<id>/events`). Likely cause, not confirmed: the browser's event stream reconnects during the quiet wait for the model's final answer and gets those lines again. Lines now carry an `id:` and the stream resumes from `Last-Event-ID` (`app/api/v1/runs.py`), but that did not stop it. Next: check the `fastapi dev` terminal for two `GET /api/v1/runs/<id>/events` per run; if so, add a keep-alive comment every few seconds and have the page skip line ids it already has; if not, reproduce it with a fake run (no LLM).
+
 ## Dev
 
 ```bash

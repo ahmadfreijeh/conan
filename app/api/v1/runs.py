@@ -4,9 +4,9 @@ import asyncio
 import json
 from collections.abc import AsyncIterator
 from pathlib import Path
-from typing import Literal
+from typing import Annotated, Literal
 
-from fastapi import APIRouter, Query, UploadFile
+from fastapi import APIRouter, Header, Query, UploadFile
 from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel
 
@@ -74,8 +74,14 @@ async def get_run(run_id: str) -> dict:
 
 
 @router.get("/{run_id}/events")
-async def run_events(run_id: str) -> StreamingResponse:
+async def run_events(
+    run_id: str, last_event_id: Annotated[str | None, Header()] = None
+) -> StreamingResponse:
     """Live log as server-sent events; ends with an `end` event holding the status.
+
+    Each line carries its index as the event id. When the browser reconnects it sends the
+    last id it got (Last-Event-ID header), so the stream goes on from the next line instead
+    of sending the whole log again.
 
     When the agent waits for a tool approval, an `approval` event holds {"tool", "input"};
     `approval_done` follows once it is answered (by the person or by the timeout).
@@ -83,7 +89,7 @@ async def run_events(run_id: str) -> StreamingResponse:
     run_manager.status(run_id)  # 404 if unknown
 
     async def stream() -> AsyncIterator[str]:
-        sent = 0
+        sent = int(last_event_id) + 1 if last_event_id and last_event_id.isdigit() else 0
         approvals = 0
         asking = False  # an approval box is open in the UI
         while True:
@@ -91,7 +97,7 @@ async def run_events(run_id: str) -> StreamingResponse:
             finished = live is None  # check first so no last line is missed
             lines = run_manager.log_lines(run_id)
             while sent < len(lines):
-                yield f"data: {json.dumps({'line': lines[sent]})}\n\n"
+                yield f"id: {sent}\ndata: {json.dumps({'line': lines[sent]})}\n\n"
                 sent += 1
             if live and live.waiting and live.approvals > approvals:
                 approvals = live.approvals
