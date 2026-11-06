@@ -4,9 +4,11 @@ import asyncio
 import json
 from collections.abc import AsyncIterator
 from pathlib import Path
+from typing import Literal
 
 from fastapi import APIRouter, Query, UploadFile
 from fastapi.responses import FileResponse, StreamingResponse
+from pydantic import BaseModel
 
 from app.core.errors import AppError
 from app.services.runs import run_manager
@@ -15,6 +17,10 @@ router = APIRouter(prefix="/runs", tags=["runs"])
 
 ALLOWED_SUFFIXES = {".jpg", ".jpeg", ".png", ".webp"}
 MAX_UPLOAD_BYTES = 30 * 1024 * 1024  # same limit as the engine loader
+
+
+class ApprovalAnswer(BaseModel):
+    answer: Literal["yes", "no", "all"]  # all = allow this tool for the rest of the run
 
 
 def _page(items: list[dict], page: int, size: int) -> dict:
@@ -69,23 +75,43 @@ async def get_run(run_id: str) -> dict:
 
 @router.get("/{run_id}/events")
 async def run_events(run_id: str) -> StreamingResponse:
-    """Live log as server-sent events; ends with an `end` event holding the status."""
+    """Live log as server-sent events; ends with an `end` event holding the status.
+
+    When the agent waits for a tool approval, an `approval` event holds {"tool", "input"};
+    `approval_done` follows once it is answered (by the person or by the timeout).
+    """
     run_manager.status(run_id)  # 404 if unknown
 
     async def stream() -> AsyncIterator[str]:
         sent = 0
+        approvals = 0
+        asking = False  # an approval box is open in the UI
         while True:
-            finished = run_manager.live(run_id) is None  # check first so no last line is missed
+            live = run_manager.live(run_id)
+            finished = live is None  # check first so no last line is missed
             lines = run_manager.log_lines(run_id)
             while sent < len(lines):
                 yield f"data: {json.dumps({'line': lines[sent]})}\n\n"
                 sent += 1
+            if live and live.waiting and live.approvals > approvals:
+                approvals = live.approvals
+                asking = True
+                yield f"event: approval\ndata: {json.dumps(live.waiting)}\n\n"
+            elif asking and not (live and live.waiting):
+                asking = False
+                yield "event: approval_done\ndata: {}\n\n"
             if finished:
                 yield f"event: end\ndata: {json.dumps({'status': run_manager.status(run_id)})}\n\n"
                 return
             await asyncio.sleep(0.3)
 
     return StreamingResponse(stream(), media_type="text/event-stream")
+
+
+@router.post("/{run_id}/approval", status_code=204)
+async def answer_approval(run_id: str, body: ApprovalAnswer) -> None:
+    """Answer the tool call the run is waiting on: yes, no or all."""
+    await run_manager.answer(run_id, body.answer)
 
 
 @router.get("/{run_id}/files/{name}")

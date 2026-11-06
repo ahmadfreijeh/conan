@@ -52,6 +52,16 @@
   #status-card { display:flex; flex-direction:column; min-height:0; }
   #log { flex:none; height:190px; overflow-y:scroll; background:var(--ink); color:#b8f5d6; font:12px/1.55 var(--mono); padding:12px; border:var(--line); border-radius:8px; overflow-x:hidden; white-space:pre-wrap; margin:0; }
   .hidden { display:none; }
+  /* tool approval */
+  #approval { border:var(--line); border-radius:8px; background:var(--warn); box-shadow:var(--shadow-sm); padding:10px 12px; margin-bottom:10px; }
+  #approval.hidden { display:none; }
+  #approval .q { font-weight:700; margin-bottom:4px; }
+  #approval code { display:block; background:var(--card); padding:4px 6px; white-space:pre-wrap; word-break:break-word; }
+  #approval .btns { display:flex; gap:8px; }
+  #approval .btns button { margin-top:10px; padding:6px; font-size:12px; }
+  #approval .btns .yes { background:var(--ok); color:#fff; }
+  #approval .btns .no { background:var(--card); }
+  #approval .btns .all { background:var(--accent2); color:#fff; }
   .summary { font-size:16px; font-weight:500; margin:0 0 16px; padding:12px 14px; background:var(--soft); border:var(--line); border-radius:8px; box-shadow:var(--shadow-sm); }
   .cand { border:var(--line); border-radius:8px; padding:12px; margin-bottom:12px; background:var(--card); box-shadow:var(--shadow-sm); }
   .cand:first-child { background:var(--soft2); }
@@ -153,6 +163,15 @@
         <div>1. Init</div><div>2. Config</div><div>3. Extract</div><div>4. Clues</div><div>5. Reason</div>
       </div>
       <div id="status">Ready. Choose a photo to start.</div>
+      <div id="approval" class="hidden">
+        <div class="q">The agent wants to run a tool. Allow it?</div>
+        <code id="approvalCall"></code>
+        <div class="btns">
+          <button class="yes" data-answer="yes">Yes</button>
+          <button class="no" data-answer="no">No</button>
+          <button class="all" data-answer="all" title="Allow this tool for the rest of the run">Allow all</button>
+        </div>
+      </div>
       <pre id="log"></pre>
     </section>
 
@@ -294,8 +313,11 @@ $("run").onclick = async () => {
     if (m) { step = Number(m[1]); setStep(step, "active"); }
     log(line);
   };
+  events.addEventListener("approval", (e) => showApproval(body.id, JSON.parse(e.data)));
+  events.addEventListener("approval_done", hideApproval);  // answered here, elsewhere or timed out
   events.addEventListener("end", async (e) => {
     events.close();
+    hideApproval();
     clearInterval(timer);
     const status = JSON.parse(e.data).status;
     const secs = Math.round((Date.now() - started) / 1000);
@@ -312,6 +334,36 @@ $("run").onclick = async () => {
     loadHistory();
   });
 };
+
+// ---- tool approval ----------------------------------------------------------
+
+// e.g. find_place(name="Place Saint-Georges", city="Paris")
+function callText(req) {
+  const args = Object.entries(req.input || {}).map(([k, v]) => `${k}=${JSON.stringify(v)}`).join(", ");
+  return `${req.tool}(${args})`;
+}
+
+function showApproval(runId, req) {
+  $("approvalCall").textContent = callText(req);  // textContent: input comes from the model
+  [...$("approval").querySelectorAll("button")].forEach((b) => {
+    b.disabled = false;
+    b.onclick = async () => {
+      $("approval").querySelectorAll("button").forEach((x) => { x.disabled = true; });
+      const res = await fetch(`/api/v1/runs/${runId}/approval`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ answer: b.dataset.answer }),
+      });
+      if (!res.ok) log("approval failed: " + ((await res.json()).error?.message || res.statusText));
+      hideApproval();
+    };
+  });
+  $("approval").classList.remove("hidden");
+}
+
+function hideApproval() {
+  $("approval").classList.add("hidden");
+}
 
 // ---- history ----------------------------------------------------------------
 
