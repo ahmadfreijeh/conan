@@ -107,17 +107,16 @@ From the CLI, `--reason --out <dir>` saves the same `clues.json` and `sent/` (cr
 
 ### Screenshots
 
-Ready to start: history on the left, photo upload, the five progress steps.
+A past run opened from History (the Wadi Rum photo, top guess Aqaba Governorate, Jordan at 82%).
 
-![Start screen](assets/init.png)
+![Overview](assets/screenshots/overview.png)
 
-A finished run: follow-up queries, OCR fixes and what the model saw in the photo.
-
-![Result tab](assets/2.png)
-
-Model input: the close-up crops sent to the LLM, with label, group, score and position.
-
-![Model input tab](assets/3.png)
+| | |
+|---|---|
+| ![Start](assets/screenshots/1-empty.png) | ![Pick a past run](assets/screenshots/2-history.png) |
+| ![Everything fills in](assets/screenshots/3-filled.png) | ![Ranked guesses](assets/screenshots/4-candidates.png) |
+| ![Pipeline progress](assets/screenshots/5-progress.png) | ![Tool switches](assets/screenshots/6-tools.png) |
+| ![Spend tracker](assets/screenshots/7-header.png) | ![Extraction log](assets/screenshots/8-extract-log.png) |
 
 ## Dev
 
