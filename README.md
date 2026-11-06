@@ -101,7 +101,7 @@ Missing models also download automatically on the first run.
 
 ## Reasoning agent (Phase 2: Reason)
 
-The engine prepares the agent input from the payload (clues, the photo and close-up crops, `app/modules/engine/prepare.py`). A Strands agent with Claude (no tools yet) reads it, links the clues and returns ranked candidate places with evidence, plus search queries for Phase 3. Needs `ANTHROPIC_API_KEY` in `.env`.
+The engine prepares the agent input from the payload (clues, the photo and close-up crops, `app/modules/engine/prepare.py`). A Strands agent with Claude reads it, links the clues, checks places with its map tools (see [Agent tools](#agent-tools-phase-3-search)) and returns ranked candidate places with evidence, coordinates when a lookup confirmed them, and the searches it could not run yet. Needs `ANTHROPIC_API_KEY` in `.env`.
 
 ```bash
 uv run python -m app.modules.engine.prepare out/photo/payload.json                                          # see the clues sent to the LLM (no API call)
@@ -117,6 +117,66 @@ The result prints and, with `--out`, is saved to `out/photo/reason.json`.
 | `REASON_MODEL` | `claude-sonnet-5-5` | Claude model; `claude-opus-5-5` for hard photos |
 | `REASON_MAX_TOKENS` | `16000` | Max length of the answer |
 | `REASON_MAX_CROPS` | `6` | Close-up crops of detected objects (signs, street, shops, vehicles, buildings) sent with the photo; `0` = photo only |
+
+## Agent tools (Phase 3: Search)
+
+The agent can look things up while it reasons. Strands runs a loop: Claude picks a tool call, the tool runs, the result goes back to Claude, and Claude decides again (another call, another tool, or the answer). Our code never decides the order. Plan and status: [docs/phase-3-search.md](docs/phase-3-search.md).
+
+| Tool | Source | What it does |
+|---|---|---|
+| `find_place(name, city, country)` | OpenStreetMap Nominatim (free, no key) | A name read in the photo (shop, square, street, landmark) → real places with coordinates, in English plus the local name |
+| `reverse_geocode(lat, lon)` | OpenStreetMap Nominatim | Coordinates (e.g. EXIF GPS) → the address there |
+
+Try the tools by hand (no LLM):
+
+```bash
+uv run python -m app.modules.agent.tools "Place de l'Etoile" --city Beirut
+uv run python -m app.modules.agent.tools --reverse 33.8959 35.5063
+```
+
+During a `--reason` run every lookup is printed, e.g. `-> find_place(name="Place Saint-Georges", city="Paris", country="France")`.
+
+How it behaves:
+
+- **Retries:** if nothing is found, `find_place` returns hints (fix the spelling, drop generic words, search the street, widen the area) and the prompt tells the agent to change one thing at a time and move on after 3 misses on one clue.
+- **Lookup limit:** at most `AGENT_MAX_LOOKUPS` tool calls per run, enforced in code; after that the agent is told to answer with what it has.
+- **Cache:** the same request in one run returns the saved answer (no network call). Failed answers are not cached.
+- **Errors:** a timeout or bad answer comes back as `{"error": ...}`, so the agent can retry or move on instead of crashing.
+
+### Tool approval
+
+A person can approve tool calls before they run. Tools named in `NEEDS_APPROVAL` (`app/modules/agent/tools/__init__.py`) ask every time; both map tools are free, so the list is empty for now. Answers: **yes** (run it), **no** (skip it, the agent goes on) or **all** (allow this tool for the rest of the run).
+
+- **CLI:** asks in the terminal: `Allow find_place(...)? [y]es / [n]o / [a]ll:`.
+- **Test UI:** a box in the Progress card with Yes / No / Allow all. With no answer in `AGENT_APPROVAL_TIMEOUT` seconds it counts as no.
+
+How an approval travels in the UI:
+
+```
+Agent (subprocess)            RunManager (server)              Browser
+1. hook pauses the agent
+2. prints APPROVAL {...}  ──► 3. marks run "waiting",
+                                 starts the timeout      ──►  4. shows the box
+                                                              5. you click Yes
+                              6. POST /approval writes   ◄──
+7. reads "yes", resumes  ◄──     "yes" to the agent's stdin
+```
+
+### Settings (`.env`, all optional)
+
+| Setting | Default | Meaning |
+|---|---|---|
+| `AGENT_MAX_LOOKUPS` | `10` | Tool calls per run; more are cancelled |
+| `AGENT_APPROVAL` | `listed` | Who asks first: `listed` = tools in `NEEDS_APPROVAL`, `all` = every tool (handy to test), `none` = nothing asks |
+| `AGENT_APPROVAL_TIMEOUT` | `300` | UI only: seconds to wait for an answer, then no; `0` = wait forever. Read when the server starts |
+| `PLACES_URL` | `https://nominatim.openstreetmap.org` | Map search service |
+| `PLACES_TIMEOUT` | `10` | Seconds per map lookup |
+
+### Add a tool
+
+1. Write it in its own file in `app/modules/agent/tools/` with `@tool`; the docstring is what Claude reads to decide when to use it.
+2. If it calls a web API, use `ApiClient` (`tools/http.py`): timeout, User-Agent, wait between calls, cache, and errors as `ToolError`.
+3. Add it to `TOOLS` in `tools/__init__.py`. If it is paid or slow, add its name to `NEEDS_APPROVAL` too.
 
 ## Full cycle
 
@@ -147,6 +207,8 @@ uv run fastapi dev app/main.py    # then open http://127.0.0.1:8000
 Upload a photo and press Run. The server runs `scripts/full_run.sh` on it, streams the log live (steps 1/5 to 5/5), then shows the result: summary, ranked places with confidence and evidence, search queries, OCR fixes. It also shows what was sent to the LLM: the close-up crops and the cleaned clues.
 
 The left panel is the history: every upload, newest first, with its top guess. Click one to see its photo, log, result and inputs again. It is read from `out/uploads/<run id>/` (photo, `run.json`, `log.txt`, `payload.json`, `clues.json`, `sent/`, `reason.json`), so it survives restarts. At the bottom, the extraction log lists every Phase 1 run from `out/runs.jsonl` (UI and CLI): time, image, size, objects, text lines, detect/OCR/total time, peak RAM and device; hover a row for its settings, click a UI row to open that case. Hover a run and click × to delete it, or use "Delete all" (both ask first; a run that is still going is kept). One run at a time; local testing only.
+
+Tool approval: if a tool needs approval (`NEEDS_APPROVAL`, or `AGENT_APPROVAL=all` in `.env` to ask for every tool), the Progress card shows the call the agent wants to make with Yes / No / Allow all. The run waits until you answer, or `AGENT_APPROVAL_TIMEOUT` seconds (default 300) pass; then it counts as No. The log shows each request and answer as `[approval] ...` lines. See [Tool approval](#tool-approval).
 
 From the CLI, `--reason --out <dir>` saves the same `clues.json` and `sent/` (crops + `crops.json`) before calling the LLM.
 
@@ -181,8 +243,8 @@ uv run ruff check . && uv run ruff format .
 - `app/services` business logic
 - `app/worker` Arq background jobs
 - `app/modules/engine` image extraction engine: `extractors/` (loader, metadata, detection, ocr), `pipeline`, `prepare` (clues + crops for the agent), `schemas`, `constants`, `helpers`, CLI; no FastAPI/DB
-- `app/modules/agent` Phase 2 reasoning agent: takes the input the engine prepared and returns the result (`reason`, `schemas`, `constants` with the prompt, `helpers`)
-- `app/tools` reserved for the agent's Phase 3 tools
+- `app/modules/agent` the reasoning agent: takes the input the engine prepared and returns the result (`reason` builds the agent and handles approval pauses, `hooks` (lookup limit, approval, printing), `schemas`, `constants` with the prompt, `helpers`)
+- `app/modules/agent/tools` the agent's `@tool` functions: `TOOLS` and `NEEDS_APPROVAL` lists (`__init__`), `places` (map tools), `http` (shared `ApiClient`), CLI to try them (`__main__`)
 - `app/ui` test page (upload + live run); `app/api/v1/runs.py` + `app/services/runs.py` run the script for it
 
 ## Roadmap
@@ -202,13 +264,16 @@ A Strands agent with Claude reads the clues and the photo, then returns ranked c
 - [ ] Test on more photos and improve the prompt
 - [ ] Check that confidence scores match how often it is right
 
-### Phase 3: Search
+### Phase 3: Search 🚧 (in progress)
 
 Give the agent tools to look up the candidate places, using many sources (maps, web, wiki, street and review photos). Plan: [docs/phase-3-search.md](docs/phase-3-search.md).
 
-- [ ] Add `@tool` functions in `app/tools/` (e.g. map / place search, web search)
-- [ ] Let the agent run the search queries from Phase 2
-- [ ] Collect candidate places with coordinates
+- [x] Map tools: `find_place` and `reverse_geocode` (OpenStreetMap)
+- [x] Agent calls tools itself, retries with hints, lookup limit, cache
+- [x] Tool approval in the CLI and the test UI, with a timeout
+- [x] Candidate places get coordinates when a lookup confirms them
+- [ ] Wiki tool for landmarks, then web search
+- [ ] Merge results from all sources and rank places
 - [ ] Find reference photos for each candidate
 
 ### Phase 4: Verify

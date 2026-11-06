@@ -2,7 +2,7 @@
 
 Candidate regions in, real places with coordinates out. The agent gets tools to look things up, the way a person would open maps, search the web and look at street photos.
 
-Status: **planned**. Nothing built yet.
+Status: **in progress**. Step 1 (map tools) built in `app/modules/agent/tools/places.py` and passed to the agent; it calls them during a `--reason` run.
 
 ## In and out
 
@@ -44,14 +44,14 @@ flowchart LR
 
 ## Human in the loop
 
-- A person approves tool use before paid or slow lookups run.
+- A person approves tool use before paid or slow lookups run. Built: tools in `NEEDS_APPROVAL` pause the agent; the person answers yes, no, or all (allow that tool for the rest of the run). `AGENT_APPROVAL=all` asks for every tool.
 - A person can stop the search, or send it back to search deeper.
 
 ## Steps
 
 | # | Step | What it does | Status |
 |---|---|---|---|
-| 1 | Map / place tool | `@tool` that finds places by name near a city; returns name + coordinates | Planned |
+| 1 | Map / place tool | `find_place` (name near a city -> coordinates) and `reverse_geocode` (GPS -> address), OpenStreetMap Nominatim | Done |
 | 2 | Web search tool | `@tool` for sign text, phone numbers, brands | Planned |
 | 3 | Wiki tool | `@tool` for landmarks | Planned |
 | 4 | Run Phase 2 queries | Agent runs `search_queries` first, then writes its own | Planned |
