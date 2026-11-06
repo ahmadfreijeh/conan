@@ -34,7 +34,7 @@ The agent can look things up while it reasons. Strands runs a loop: Claude picks
 
 | Tool | Source | What it does |
 |---|---|---|
-| `find_place(name, city, country)` | OpenStreetMap Nominatim (free, no key) | A name read in the photo (shop, square, street, landmark) → real places with coordinates, in English plus the local name |
+| `find_place(name, city, country)` | OpenStreetMap Nominatim (free, no key) | A name read in the photo (shop, square, street, landmark) → real places with coordinates and an openstreetmap.org link, in English plus the local name |
 | `reverse_geocode(lat, lon)` | OpenStreetMap Nominatim | Coordinates (e.g. EXIF GPS) → the address there |
 | `wiki_search(query, lang)` | Wikipedia (free, no key) | Free text or a loose description ("clock tower downtown Beirut") → top articles with a short intro and coordinates. Handles misread OCR words (see below) |
 | `wiki_summary(title, lang)` | Wikipedia | One article → description, full intro, coordinates and its name in other languages (local names help `find_place`) |
@@ -80,6 +80,10 @@ How it behaves:
 - **Lookup limit:** at most `AGENT_MAX_LOOKUPS` tool calls per run, enforced in code; after that the agent is told to answer with what it has.
 - **Cache:** the same request in one run returns the saved answer (no network call). Failed answers are not cached.
 - **Errors:** a timeout or bad answer comes back as `{"error": ...}`, so the agent can retry or move on instead of crashing.
+
+### Sources
+
+Every link a tool returns during the run (Wikipedia articles, OpenStreetMap places) is kept by the `collect_sources` hook and saved as `sources` in `reason.json`: title, url, `wiki` or `map`, the tool, and `used` (its name appears in the answer). The links come only from real tool results, never from the model, so none is made up. The test UI lists them at the end of the Result tab, grouped by Wikipedia and Map, ★ = used, used first.
 
 ### Choosing tools per run
 

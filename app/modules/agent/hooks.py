@@ -22,6 +22,7 @@ from app.modules.agent.tools import NEEDS_APPROVAL
 # Keys in agent.state
 LOOKUPS_KEY = "lookups"  # tool calls made this run
 ALLOWED_KEY = "allowed_tools"  # tools the person answered "all" for, this run
+SOURCES_KEY = "sources"  # links the tools returned this run: {title, url, kind, tool}
 
 # Key in event.invocation_state: ids of tool calls paused for approval. Strands still runs
 # the other hooks when one pauses, so they skip these calls (no double count or print).
@@ -44,6 +45,7 @@ def start_run(agent: Agent) -> None:
     """Call once before each run: no lookups made, no tools allowed yet."""
     agent.state.set(LOOKUPS_KEY, 0)
     agent.state.set(ALLOWED_KEY, [])
+    agent.state.set(SOURCES_KEY, [])
 
 
 def _needs_approval(name: str) -> bool:
@@ -100,6 +102,58 @@ def print_tool_call(event: BeforeToolCallEvent) -> None:
     print(f"-> {event.tool_use['name']}({args}){skipped}", file=sys.stderr)
 
 
+def _tool_json(event: AfterToolCallEvent) -> dict | None:
+    """The tool's result as a dict, or None (failed, cancelled, not JSON)."""
+    if event.exception or event.cancel_message:
+        return None
+    text = "".join(part.get("text", "") for part in event.result.get("content", []))
+    try:
+        data = json.loads(text)
+    except (ValueError, TypeError):
+        return None
+    return data if isinstance(data, dict) else None
+
+
+def _links(result: dict) -> list[tuple[str, str]]:
+    """(title, url) pairs in a tool result: map places, wiki articles, nearby places."""
+    items = [*result.get("places", []), *result.get("results", [])]
+    if isinstance(result.get("place"), dict):  # reverse_geocode
+        items.append(result["place"])
+    if "url" in result:  # wiki_summary: the article itself
+        items.append(result)
+    pairs = []
+    for item in items:
+        url, title = item.get("url"), item.get("title") or item.get("name")
+        if url and title:
+            pairs.append((title, url))
+    return pairs
+
+
+def collect_sources(event: AfterToolCallEvent) -> None:
+    """After each tool call: keep the links it returned, so the result can list its sources.
+    Links come only from real tool results, never from the model, so none is made up."""
+    if event.tool_use["name"] == ReasonResult.__name__:
+        return
+    result = _tool_json(event)
+    if result is None:
+        return
+    sources = event.agent.state.get(SOURCES_KEY) or []
+    seen = {s["url"] for s in sources}
+    for title, url in _links(result):
+        if url not in seen:
+            seen.add(url)
+            kind = "wiki" if "wikipedia.org" in url else "map"
+            sources.append(
+                {"title": title, "url": url, "kind": kind, "tool": event.tool_use["name"]}
+            )
+    event.agent.state.set(SOURCES_KEY, sources)
+
+
+def run_sources(agent: Agent) -> list[dict]:
+    """This run's sources (see collect_sources)."""
+    return agent.state.get(SOURCES_KEY) or []
+
+
 def _summarize(result: dict) -> str:
     """One short line for a tool result: places found, no match with hints, or the error."""
     if "error" in result:
@@ -108,12 +162,29 @@ def _summarize(result: dict) -> str:
         places = result["places"]
         if not places:
             return f"no match (hints: {'; '.join(result.get('hints', []))})"
-        top = "; ".join(f"{p['name']} ({p['lat']:.4f}, {p['lon']:.4f})" for p in places[:3])
+        top = "; ".join(_place_line(p) for p in places[:3])
         more = f" (+{len(places) - 3} more)" if len(places) > 3 else ""
         return f"{len(places)} places: {top}{more}"
+    if "results" in result:  # wiki_search
+        found = result["results"]
+        if not found:
+            return f"no match (hints: {'; '.join(result.get('hints', []))})"
+        return f"{len(found)} articles: " + "; ".join(r["title"] for r in found[:3])
     if "place" in result:  # reverse_geocode
         return f"address: {result['place'].get('address', '')}"
+    if "intro" in result:  # wiki_summary
+        return f"article: {result['title']} ({result.get('description', '')})"
     return json.dumps(result, ensure_ascii=False)[:200]
+
+
+def _place_line(p: dict) -> str:
+    """e.g. 'Nejmeh Square (33.8967, 35.5046)' or 'Martyrs' Square, 125 m' for wiki_nearby."""
+    name = p.get("name") or p.get("title", "?")
+    if "distance_m" in p:
+        return f"{name}, {p['distance_m']} m"
+    if p.get("lat") is not None:
+        return f"{name} ({p['lat']:.4f}, {p['lon']:.4f})"
+    return name
 
 
 def print_tool_result(event: AfterToolCallEvent) -> None:
@@ -140,4 +211,5 @@ HOOKS = [
     limit_lookups,  # before each tool call: stop after AGENT_MAX_LOOKUPS
     print_tool_call,  # before each tool call: print it
     print_tool_result,  # after each tool call: print a short summary of its result
+    collect_sources,  # after each tool call: keep the links it returned (Sources in the result)
 ]

@@ -22,8 +22,8 @@ from app.modules.agent.constants import (
     TOOL_TIPS,
 )
 from app.modules.agent.helpers import image_bytes
-from app.modules.agent.hooks import ALL, HOOKS, NO, YES, start_run
-from app.modules.agent.schemas import ReasonResult
+from app.modules.agent.hooks import ALL, HOOKS, NO, YES, run_sources, start_run
+from app.modules.agent.schemas import ReasonResult, RunResult, Source
 from app.modules.agent.tools import select_tools, tool_name
 from app.modules.engine.schemas import AgentInput
 
@@ -98,7 +98,7 @@ def reason(
     agent: Agent | None = None,
     approve: Approve | None = None,
     tool_names: list[str] | None = None,
-) -> ReasonResult:
+) -> RunResult:
     """Send the prepared input to the agent and return its structured answer.
 
     If a tool needs approval, the agent pauses (stop_reason "interrupt"). Each waiting call
@@ -125,7 +125,20 @@ def reason(
     )
     if not isinstance(result.structured_output, ReasonResult):
         raise RuntimeError("The model did not return a structured result")
-    return result.structured_output
+    return with_sources(result.structured_output, run_sources(agent))
+
+
+def with_sources(answer: ReasonResult, sources: list[dict]) -> RunResult:
+    """The answer plus the links the tools returned; those named in the answer come first."""
+    text = answer.model_dump_json().casefold()
+
+    def used(title: str) -> bool:
+        main = title.split(",")[0].split("(")[0].strip().casefold()  # "Martyrs' Square, Beirut"
+        return len(main) > 3 and main in text
+
+    marked = [Source(**s, used=used(s["title"])) for s in sources]
+    marked.sort(key=lambda s: not s.used)  # stable: used first, then in lookup order
+    return RunResult(**answer.model_dump(), sources=marked)
 
 
 def _record_usage(model: str, before: dict, after: dict) -> None:

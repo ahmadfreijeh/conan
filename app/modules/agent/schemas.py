@@ -43,3 +43,19 @@ class ReasonResult(BaseModel):
     search_queries: list[SearchQuery] = Field(
         description="Searches you could not run with your tools (web, wiki), most useful first"
     )
+
+
+# --- Run result (saved) ---------------------------------------------------------------
+# Not shown to the LLM: reason() adds these after the run, from the real tool results.
+
+
+class Source(BaseModel):
+    title: str
+    url: str
+    kind: str  # wiki or map
+    tool: str  # the tool that returned it
+    used: bool = False  # its title appears in the answer (summary, areas, evidence)
+
+
+class RunResult(ReasonResult):
+    sources: list[Source] = []

@@ -69,7 +69,9 @@
   .rightcol > #status-card { flex:none; }
   .rightcol > #panel { flex:1; }
   #toolsCount { font:600 11px var(--mono); text-transform:none; color:var(--muted); margin-left:4px; }
-  #toolList { max-height:240px; overflow-y:auto; }
+  /* Tools card fills the rest of the column's height; its list scrolls inside */
+  .leftcol > #toolsCard { flex:1 1 auto; min-height:180px; display:flex; flex-direction:column; }
+  #toolList { flex:1; min-height:0; overflow-y:auto; }
   .tool { display:flex; gap:8px; align-items:flex-start; padding:6px 0; border-top:1px dashed rgba(20,20,20,.25); cursor:pointer; }
   .tool:first-child { border-top:none; }
   .tool input { margin-top:3px; accent-color:var(--accent2); flex:none; }
@@ -101,6 +103,14 @@
   .against li { color:var(--bad); }
   .cols { display:grid; grid-template-columns: repeat(3, 1fr); gap:16px; margin-top:18px; }
   .cols h2 { margin-bottom:6px; }
+  #sourcesBox { margin-top:22px; border-top:var(--line); padding-top:14px; }
+  #sourcesBox h2 { margin-bottom:2px; }
+  #sourcesBox h3 { margin:10px 0 6px; font:700 12px var(--sans); text-transform:uppercase; }
+  .cols2 { display:grid; grid-template-columns: repeat(2, 1fr); gap:16px; }
+  .src a { color:var(--ink); font-weight:600; text-decoration:underline; text-decoration-color:var(--accent2); text-underline-offset:2px; }
+  .src a:hover { background:var(--soft2); }
+  .src.used a::before { content:"★ "; color:var(--accent); }
+  .src .muted { margin-left:6px; }
   .muted { color:var(--muted); font-size:12px; }
   .tag { display:inline-block; font:700 10px var(--sans); text-transform:uppercase; padding:1px 7px; border:1.5px solid var(--ink); border-radius:999px; background:var(--warn); margin-right:5px; }
   /* history */
@@ -231,6 +241,14 @@
             <div><h2>Follow-up queries</h2><ul id="queries"></ul></div>
             <div><h2>OCR corrections</h2><ul id="fixes"></ul></div>
             <div><h2>Visual observations</h2><ul id="seen"></ul></div>
+          </div>
+          <div id="sourcesBox" class="hidden">
+            <h2>Sources</h2>
+            <p class="muted">Links the tools returned during the run. ★ = named in the answer.</p>
+            <div class="cols2">
+              <div><h3>Wikipedia</h3><ul id="srcWiki"></ul></div>
+              <div><h3>Map (OpenStreetMap)</h3><ul id="srcMap"></ul></div>
+            </div>
           </div>
         </div>
         <p class="placeholder">No result yet. Analyze a photo or open a past run.</p>
@@ -617,6 +635,21 @@ function showResult(r) {
   });
   fill("fixes", r.corrected_text, (t) => el("li", t));
   fill("seen", r.seen_in_image, (t) => el("li", t));
+
+  // Sources: links from the tool results (none for runs made before this was added).
+  const sources = r.sources || [];
+  $("sourcesBox").classList.toggle("hidden", !sources.length);
+  const link = (x) => {
+    const li = el("li", null, "src" + (x.used ? " used" : ""));
+    const a = el("a", x.title);
+    a.href = x.url;
+    a.target = "_blank";
+    a.rel = "noopener";
+    li.append(a, el("span", x.tool, "muted"));
+    return li;
+  };
+  fill("srcWiki", sources.filter((x) => x.kind === "wiki"), link);
+  fill("srcMap", sources.filter((x) => x.kind === "map"), link);
 
   $("result").classList.remove("hidden");
   setTab("assess");

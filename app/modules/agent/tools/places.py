@@ -48,7 +48,15 @@ def _place(item: dict) -> dict:
         "lon": float(item["lon"]),
         "type": f"{item.get('category', '')}/{item.get('type', '')}",
         "address": item.get("display_name", ""),
+        "url": _osm_url(item),
     }
+
+
+def _osm_url(item: dict) -> str:
+    """Link to the place on openstreetmap.org (its node, way or relation, else the map spot)."""
+    if item.get("osm_type") and item.get("osm_id"):
+        return f"https://www.openstreetmap.org/{item['osm_type']}/{item['osm_id']}"
+    return f"https://www.openstreetmap.org/?mlat={item['lat']}&mlon={item['lon']}#map=18/{item['lat']}/{item['lon']}"
 
 
 GENERIC_WORDS = {"brasserie", "cafe", "café", "restaurant", "hotel", "bar", "shop", "le", "la"}
