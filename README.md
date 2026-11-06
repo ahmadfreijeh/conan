@@ -48,75 +48,22 @@ uv run fastapi dev app/main.py              # API on http://127.0.0.1:8000 (docs
 uv run arq app.worker.main.WorkerSettings   # background worker
 ```
 
-## Image engine (Phase 1: Extract)
+## Modules
 
-Runs every extraction step on a photo (load, EXIF, object detection, OCR) and prints the JSON payload. Steps and status: [docs/phase-1-extract.md](docs/phase-1-extract.md).
+Each module has its own README with commands, settings and details:
 
-### Run
-
-```bash
-uv run python -m app.modules.engine samples/photo.jpeg                          # print the payload
-uv run python -m app.modules.engine samples/photo.jpeg --out out/photo          # also save files (see below)
-uv run python -m app.modules.engine samples/photo.jpeg --no-detect              # skip object detection
-uv run python -m app.modules.engine samples/photo.jpeg --no-ocr                 # skip text reading
-uv run python -m app.modules.engine samples/photo.jpeg --no-detect --no-ocr     # load + EXIF only (instant, no models)
-```
-
-With `--out out/photo` you get:
-
-- `out/photo/payload.json`: the full result
-- `out/photo/crops/`: one image per detected object (e.g. `03_sign.jpg`)
-- `out/photo/text/`: one image per text line read (e.g. `03_CAFE.jpg`)
-- `out/runs.jsonl`: one line added per run (time, CPU, GPU, memory, settings) to compare runs
-
-Every payload has a `run` section: total and per-step time, CPU time and usage, GPU device and memory, peak RAM, machine, library versions and the settings used. GPU usage % isn't available on macOS without sudo.
-
-Put test photos in `samples/` (JPEG, PNG or WebP). `samples/` and `out/` are git-ignored.
-
-### Models (one-time downloads)
-
-```bash
-# Object detection: Grounding DINO tiny (~700 MB, into ~/.cache/huggingface)
-uv run python -c "from transformers import AutoProcessor, AutoModelForZeroShotObjectDetection as M; m='IDEA-Research/grounding-dino-tiny'; AutoProcessor.from_pretrained(m); M.from_pretrained(m); print('dino ready')"
-
-# OCR: text finder + English/Latin and Arabic readers (into ~/.paddlex/official_models)
-uv run python -c "from paddleocr import TextDetection, TextRecognition; TextDetection(model_name='PP-OCRv5_mobile_det'); [TextRecognition(model_name=m) for m in ('PP-OCRv6_medium_rec', 'arabic_PP-OCRv5_mobile_rec')]; print('ocr ready')"
-```
-
-Missing models also download automatically on the first run.
-
-### Settings (`.env`, all optional)
-
-| Setting | Default | Meaning |
+| Module | What it does | Docs |
 |---|---|---|
-| `ENGINE_DEVICE` | `auto` | Object detection on `mps` (Mac GPU) or `cpu` |
-| `DETECT_BOX_THRESHOLD` | `0.30` | Min object confidence |
-| `DETECT_TEXT_THRESHOLD` | `0.25` | Min confidence the box matches the word |
-| `DETECT_GROUPS` | `all` | Label groups to look for, e.g. `text,street,buildings`. Groups: text, food, table, interior, venue, buildings, architecture, landmarks, street, commerce, rooftops, vehicles, nature, plants, animals, symbols |
-| `DETECT_BATCH_SIZE` | `25` | Labels per model run. Fewer runs = faster, longer prompts = less accurate |
-| `OCR_DET_MODEL` | `mobile` | Text finder: `mobile` (fast) or `server` (more accurate) |
-| `OCR_REC_MODELS` | `PP-OCRv6_medium_rec,arabic_PP-OCRv5_mobile_rec` | Text readers, comma-separated |
-| `OCR_MIN_SCORE` | `0.5` | Min text reading confidence |
-| `ENGINE_RUNS_LOG` | `out/runs.jsonl` | Run history file (written when `--out` is used) |
+| `app/modules/engine` | Phase 1: pull clues from the photo, all local (EXIF, objects with Grounding DINO, text with PaddleOCR) | [engine/README.md](app/modules/engine/README.md) |
+| `app/modules/agent` | Phase 2 + 3: Claude reasons over the clues and checks places with its tools (OpenStreetMap, Wikipedia); tool choice, approval, prompt caching, spend | [agent/README.md](app/modules/agent/README.md) |
 
-## Reasoning agent (Phase 2: Reason)
-
-The engine prepares the agent input from the payload (clues, the photo and close-up crops, `app/modules/engine/prepare.py`). A Strands agent with Claude (no tools yet) reads it, links the clues and returns ranked candidate places with evidence, plus search queries for Phase 3. Needs `ANTHROPIC_API_KEY` in `.env`.
+Quick try:
 
 ```bash
-uv run python -m app.modules.engine.prepare out/photo/payload.json                                          # see the clues sent to the LLM (no API call)
-uv run python -m app.modules.engine samples/photo.jpeg --reason --out out/photo                          # Phase 1 + Phase 2
-uv run python -m app.modules.engine samples/photo.jpeg --reason --from-payload out/photo/payload.json --out out/photo  # Phase 2 only, reuses the saved payload
+uv run python -m app.modules.engine samples/photo.jpeg --out out/photo                # extract clues
+uv run python -m app.modules.engine samples/photo.jpeg --reason --out out/photo       # extract + reason (needs ANTHROPIC_API_KEY)
+uv run python -m app.modules.agent.tools --wiki "Mohammad Al-Amin Mosque Beirut"      # try one tool by hand (no LLM)
 ```
-
-The result prints and, with `--out`, is saved to `out/photo/reason.json`.
-
-| Setting | Default | Meaning |
-|---|---|---|
-| `ANTHROPIC_API_KEY` | (empty) | Required for `--reason` |
-| `REASON_MODEL` | `claude-sonnet-5-5` | Claude model; `claude-opus-5-5` for hard photos |
-| `REASON_MAX_TOKENS` | `16000` | Max length of the answer |
-| `REASON_MAX_CROPS` | `6` | Close-up crops of detected objects (signs, street, shops, vehicles, buildings) sent with the photo; `0` = photo only |
 
 ## Full cycle
 
@@ -147,6 +94,14 @@ uv run fastapi dev app/main.py    # then open http://127.0.0.1:8000
 Upload a photo and press Run. The server runs `scripts/full_run.sh` on it, streams the log live (steps 1/5 to 5/5), then shows the result: summary, ranked places with confidence and evidence, search queries, OCR fixes. It also shows what was sent to the LLM: the close-up crops and the cleaned clues.
 
 The left panel is the history: every upload, newest first, with its top guess. Click one to see its photo, log, result and inputs again. It is read from `out/uploads/<run id>/` (photo, `run.json`, `log.txt`, `payload.json`, `clues.json`, `sent/`, `reason.json`), so it survives restarts. At the bottom, the extraction log lists every Phase 1 run from `out/runs.jsonl` (UI and CLI): time, image, size, objects, text lines, detect/OCR/total time, peak RAM and device; hover a row for its settings, click a UI row to open that case. Hover a run and click × to delete it, or use "Delete all" (both ask first; a run that is still going is kept). One run at a time; local testing only.
+
+**Rate limit:** starting a run (`POST /api/v1/runs`) is limited to `RUN_LIMIT_PER_HOUR` (default 3) per IP in any rolling hour, counted in Redis (`app/services/rate_limit.py`). The next one gets `429` with `Retry-After` and "Try again in N min", shown in the Progress card. Only runs that start count; reading history and results is not limited. It is **off when `APP_ENV=local`**; set `RUN_LIMIT_ON_LOCAL=true` to test it locally. Behind a proxy, set `TRUST_PROXY=true` so the IP comes from `X-Forwarded-For`.
+
+Tool approval: if a tool needs approval (`NEEDS_APPROVAL`, or `AGENT_APPROVAL=all` in `.env` to ask for every tool), the Progress card shows the call the agent wants to make with Yes / No / Allow all. The run waits until you answer, or `AGENT_APPROVAL_TIMEOUT` seconds (default 300) pass; then it counts as No. The log shows each request and answer as `[approval] ...` lines. See [Tool approval](app/modules/agent/README.md#tool-approval).
+
+Tools: a Tools card under the Photo card lists every tool with a toggle and a short description per tool (from `GET /api/v1/runs/tools`, the first paragraph of each docstring). Only the tools that are on go to the run; the choice is kept in the browser, and a new tool starts on. Hover a run in the history to see which tools it had (saved in `run.json`).
+
+Top bar: last run's tokens and cost, total spent, and (with `CREDIT_BUDGET` set) about how much credit is left, e.g. `Last run: 54k tokens · $0.059 | Total: 12 runs · 650k tokens · $1.42 | Left: ~$18.58 of $20`. "Left" turns red under 10%. It comes from `GET /api/v1/runs/spend`.
 
 From the CLI, `--reason --out <dir>` saves the same `clues.json` and `sent/` (crops + `crops.json`) before calling the LLM.
 
@@ -181,8 +136,8 @@ uv run ruff check . && uv run ruff format .
 - `app/services` business logic
 - `app/worker` Arq background jobs
 - `app/modules/engine` image extraction engine: `extractors/` (loader, metadata, detection, ocr), `pipeline`, `prepare` (clues + crops for the agent), `schemas`, `constants`, `helpers`, CLI; no FastAPI/DB
-- `app/modules/agent` Phase 2 reasoning agent: takes the input the engine prepared and returns the result (`reason`, `schemas`, `constants` with the prompt, `helpers`)
-- `app/tools` reserved for the agent's Phase 3 tools
+- `app/modules/agent` the reasoning agent: takes the input the engine prepared and returns the result (`reason` builds the agent and handles approval pauses, `hooks` (lookup limit, approval, printing), `schemas`, `constants` with the prompt, `helpers`, `spend` (token cost and spend log))
+- `app/modules/agent/tools` the agent's `@tool` functions: `TOOLS` and `NEEDS_APPROVAL` lists (`__init__`), `places` (map tools), `wiki` (Wikipedia tools), `http` (shared `ApiClient`), CLI to try them (`__main__`)
 - `app/ui` test page (upload + live run); `app/api/v1/runs.py` + `app/services/runs.py` run the script for it
 
 ## Roadmap
@@ -202,16 +157,33 @@ A Strands agent with Claude reads the clues and the photo, then returns ranked c
 - [ ] Test on more photos and improve the prompt
 - [ ] Check that confidence scores match how often it is right
 
-### Phase 3: Search
+### Phase 3: Search 🚧 (in progress)
 
 Give the agent tools to look up the candidate places, using many sources (maps, web, wiki, street and review photos). Plan: [docs/phase-3-search.md](docs/phase-3-search.md).
 
-- [ ] Add `@tool` functions in `app/tools/` (e.g. map / place search, web search)
-- [ ] Let the agent run the search queries from Phase 2
-- [ ] Collect candidate places with coordinates
+- [x] Map tools: `find_place` and `reverse_geocode` (OpenStreetMap)
+- [x] Agent calls tools itself, retries with hints, lookup limit, cache
+- [x] Tool approval in the CLI and the test UI, with a timeout
+- [x] Candidate places get coordinates when a lookup confirms them
+- [x] Wiki tools: `wiki_search` (with fuzzy / wildcard / fragment search for OCR words), `wiki_summary`, `wiki_nearby`
+- [x] Choose tools per run (UI toggles, `--tools`, `AGENT_TOOLS`); a tool that is off is removed from the run and the prompt
+- [x] Prompt caching and spend tracking (tokens, USD, budget left in the UI)
+- [ ] `wiki_features(kind, region)`: list features of one kind in a region from Wikidata (e.g. every mountain in Istanbul Province, with coordinates and height), then check each with `wiki_nearby` / `wiki_summary`. The tool builds the query from a fixed menu of kinds (mountain, lake, island, beach, lighthouse, castle, bridge, mosque, church, tower), so the agent never writes SPARQL
+- [ ] Web search tool
+- [ ] Pattern search on OpenStreetMap (Overpass) for cut-off shop signs in an area
+- [ ] Merge results from all sources and rank places
 - [ ] Find reference photos for each candidate
 
-### Phase 4: Verify
+### Phase 4: Retrieve (RAG)
+
+Give the agent memory and reference data with a vector DB (Qdrant: local mode for dev, server or cloud later).
+
+- [ ] Photo similarity: match the photo against geotagged reference photos (CLIP / GeoCLIP embeddings)
+- [ ] Clue knowledge base: notes like plate colors, scripts, phone formats → country; `search_clues` tool
+- [ ] Fuzzy place names: embed OSM place names so misread OCR signs still match
+- [ ] Past runs: save solved runs and reuse them for photos with similar clues
+
+### Phase 5: Verify
 
 Check candidates against the photo and pick the final location.
 
@@ -224,3 +196,7 @@ Check candidates against the photo and pick the final location.
 - [ ] Run geolocation jobs in the Arq worker instead of the request
 - [ ] Save runs and results to Postgres
 - [ ] Set up PostGIS for location data
+
+### Known issues
+
+- [ ] Test UI live log sometimes shows the lines after the last approval twice (display only; `log.txt` is clean). Likely an event-stream reconnect; check for two `GET .../events` per run

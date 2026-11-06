@@ -26,9 +26,13 @@
   header h1 { margin:0; font:28px/1 var(--display); text-transform:uppercase; letter-spacing:.01em; display:flex; align-items:center; gap:12px; }
   header h1 span { font:700 12px var(--sans); text-transform:none; letter-spacing:0; background:var(--accent); color:var(--ink); border:var(--line); box-shadow:var(--shadow-sm); padding:3px 10px; border-radius:999px; transform:rotate(-2deg); }
   header p { margin:6px 0 0; color:var(--muted); font-size:13px; }
+  .head-right { display:flex; gap:10px; align-items:center; }
+  .spend { background:var(--soft2) !important; }
+  .spend b { font-weight:600; }
+  .spend .low { color:var(--bad); }
   .meta { font:600 13px var(--mono); background:var(--warn); border:var(--line); box-shadow:var(--shadow-sm); padding:4px 10px; border-radius:6px; }
-  .layout { flex:1; min-height:0; width:100%; display:grid; grid-template-columns: 280px 1fr; grid-template-rows: minmax(0, 1fr); gap:20px; padding:20px 24px; max-width:1500px; margin:0 auto; }
-  main { min-height:0; display:grid; grid-template-columns: 300px 1fr; grid-template-rows: auto minmax(0, 1fr); gap:20px; }
+  .layout { flex:1; min-height:0; width:100%; display:grid; grid-template-columns: 260px 1fr; grid-template-rows: minmax(0, 1fr); gap:20px; padding:20px 24px; max-width:1800px; margin:0 auto; }
+  main { min-height:0; display:grid; grid-template-columns: 320px 1fr; grid-template-rows: minmax(0, 1fr); gap:20px; }
   aside { display:flex; flex-direction:column; min-height:0; }
   .card { background:var(--card); border:var(--line); border-radius:10px; box-shadow:var(--shadow); padding:16px; }
   .card h2 { margin:0 0 12px; font:15px var(--display); text-transform:uppercase; letter-spacing:.02em; }
@@ -43,15 +47,48 @@
   button:active:not(:disabled) { transform:translate(4px, 4px); box-shadow:none; }
   button:disabled { opacity:.45; cursor:default; }
   .steps { display:flex; gap:6px; margin-bottom:12px; }
-  .steps div { flex:1; padding:6px 4px; border:var(--line); border-radius:6px; background:var(--card2); font:700 11px var(--sans); text-align:center; text-transform:uppercase; }
+  .steps div { flex:1; padding:5px 2px; border:var(--line); border-radius:6px; background:var(--card2); font:700 11px var(--sans); text-align:center; text-transform:uppercase; }
   .steps div.active { background:var(--warn); box-shadow:var(--shadow-sm); animation: pulse .9s ease-in-out infinite; }
   .steps div.done { background:var(--ok); color:#fff; }
   .steps div.failed { background:var(--bad); color:#fff; }
   @keyframes pulse { 50% { transform:translateY(-2px); } }
   #status { font:600 13px var(--sans); margin-bottom:10px; }
   #status-card { display:flex; flex-direction:column; min-height:0; }
-  #log { flex:none; height:190px; overflow-y:scroll; background:var(--ink); color:#b8f5d6; font:12px/1.55 var(--mono); padding:12px; border:var(--line); border-radius:8px; overflow-x:hidden; white-space:pre-wrap; margin:0; }
+  #log { flex:none; height:150px; overflow-y:scroll; background:var(--ink); color:#b8f5d6; font:12px/1.55 var(--mono); padding:12px; border:var(--line); border-radius:8px; overflow-x:hidden; white-space:pre-wrap; margin:0; }
+  /* log terminal: corner button toggles fullscreen */
+  .logbox { position:relative; flex:none; }
+  #logFull { position:absolute; top:8px; right:22px; z-index:1; width:auto; margin:0; padding:2px 8px; font:700 14px/1 var(--mono);
+             background:var(--card); box-shadow:var(--shadow-sm); text-transform:none; letter-spacing:0; }
+  .logbox.full { position:fixed; inset:16px; z-index:50; }
+  .logbox.full #log { height:100%; box-shadow:var(--shadow); font-size:13px; }
   .hidden { display:none; }
+  /* Tools: toggles in the Photo card; a tool that is off is not given to the agent */
+  .leftcol { display:flex; flex-direction:column; gap:20px; min-height:0; overflow-y:auto; padding:0 8px 8px 0; }
+  .leftcol > .card { flex:none; }
+  .rightcol { display:flex; flex-direction:column; gap:20px; min-height:0; }
+  .rightcol > #status-card { flex:none; }
+  .rightcol > #panel { flex:1; }
+  #toolsCount { font:600 11px var(--mono); text-transform:none; color:var(--muted); margin-left:4px; }
+  /* Tools card fills the rest of the column's height; its list scrolls inside */
+  .leftcol > #toolsCard { flex:1 1 auto; min-height:180px; display:flex; flex-direction:column; }
+  #toolList { flex:1; min-height:0; overflow-y:auto; }
+  .tool { display:flex; gap:8px; align-items:flex-start; padding:6px 0; border-top:1px dashed rgba(20,20,20,.25); cursor:pointer; }
+  .tool:first-child { border-top:none; }
+  .tool input { margin-top:3px; accent-color:var(--accent2); flex:none; }
+  .tool b { display:block; font:600 12px var(--mono); }
+  .tool span { display:block; font-size:11px; line-height:1.35; color:var(--muted); }
+  .tool.off b { text-decoration:line-through; opacity:.55; }
+  .tool.off span { opacity:.55; }
+  /* tool approval */
+  #approval { border:var(--line); border-radius:8px; background:var(--warn); box-shadow:var(--shadow-sm); padding:10px 12px; margin-bottom:10px; }
+  #approval.hidden { display:none; }
+  #approval .q { font-weight:700; margin-bottom:4px; }
+  #approval code { display:block; background:var(--card); padding:4px 6px; white-space:pre-wrap; word-break:break-word; }
+  #approval .btns { display:flex; gap:8px; }
+  #approval .btns button { margin-top:10px; padding:6px; font-size:12px; }
+  #approval .btns .yes { background:var(--ok); color:#fff; }
+  #approval .btns .no { background:var(--card); }
+  #approval .btns .all { background:var(--accent2); color:#fff; }
   .summary { font-size:16px; font-weight:500; margin:0 0 16px; padding:12px 14px; background:var(--soft); border:var(--line); border-radius:8px; box-shadow:var(--shadow-sm); }
   .cand { border:var(--line); border-radius:8px; padding:12px; margin-bottom:12px; background:var(--card); box-shadow:var(--shadow-sm); }
   .cand:first-child { background:var(--soft2); }
@@ -66,6 +103,14 @@
   .against li { color:var(--bad); }
   .cols { display:grid; grid-template-columns: repeat(3, 1fr); gap:16px; margin-top:18px; }
   .cols h2 { margin-bottom:6px; }
+  #sourcesBox { margin-top:22px; border-top:var(--line); padding-top:14px; }
+  #sourcesBox h2 { margin-bottom:2px; }
+  #sourcesBox h3 { margin:10px 0 6px; font:700 12px var(--sans); text-transform:uppercase; }
+  .cols2 { display:grid; grid-template-columns: repeat(2, 1fr); gap:16px; }
+  .src a { color:var(--ink); font-weight:600; text-decoration:underline; text-decoration-color:var(--accent2); text-underline-offset:2px; }
+  .src a:hover { background:var(--soft2); }
+  .src.used a::before { content:"★ "; color:var(--accent); }
+  .src .muted { margin-left:6px; }
   .muted { color:var(--muted); font-size:12px; }
   .tag { display:inline-block; font:700 10px var(--sans); text-transform:uppercase; padding:1px 7px; border:1.5px solid var(--ink); border-radius:999px; background:var(--warn); margin-right:5px; }
   /* history */
@@ -111,7 +156,7 @@
   .pager button { width:auto; margin:0; padding:3px 10px; font-size:11px; background:var(--card); box-shadow:var(--shadow-sm); }
   .pager.hidden { display:none; }
   /* tabbed bottom panel: the only part that scrolls */
-  #panel { grid-column: 1 / -1; display:flex; flex-direction:column; min-height:0; }
+  #panel { display:flex; flex-direction:column; min-height:0; }
   .tabs { flex:none; display:flex; gap:8px; margin:0 0 16px; }
   .tabs button { width:auto; margin:0; padding:7px 14px; font-size:12px; background:var(--card); box-shadow:var(--shadow-sm); }
   .tabs button.on { background:var(--accent2); color:#fff; }
@@ -119,6 +164,41 @@
   .pane.on { display:block; }
   .placeholder { color:var(--muted); font-weight:500; }
   #result:not(.hidden) ~ .placeholder, #inputs:not(.hidden) ~ .placeholder { display:none; }
+  /* ---- responsive: the 3 full-height columns need a wide screen ---- */
+  /* Tablet / small laptop: History moves under the work area; the page scrolls. */
+  @media (max-width: 1200px) {
+    html, body { height:auto; }
+    body { overflow:auto; }
+    .layout { grid-template-columns: 1fr; grid-template-rows: auto; }
+    .layout > *, main > *, .leftcol > *, .rightcol > * { min-width:0; }  /* let columns shrink */
+    .layout > aside { order:2; max-height:60vh; }
+    main { grid-template-rows: auto; }
+    .leftcol, .rightcol { overflow:visible; }
+    .leftcol > #toolsCard { flex:none; }
+    #toolList { max-height:none; overflow:visible; }
+    #panel { min-height:70vh; }
+  }
+  /* Phone: everything in one column, in the order you use it. */
+  @media (max-width: 760px) {
+    header { flex-wrap:wrap; gap:10px; padding:12px 14px; }
+    header h1 { font-size:22px; }
+    header p { display:none; }
+    .head-right { flex-wrap:wrap; width:100%; }
+    .spend { font-size:11px; }
+    .layout { padding:12px; gap:14px; }
+    main { grid-template-columns: 1fr; gap:14px; }
+    .leftcol, .rightcol { gap:14px; padding:0; }
+    .cols, .cols2 { grid-template-columns: 1fr; }
+    .steps { flex-wrap:wrap; }
+    .steps div { flex:1 1 30%; }
+    .tabs { flex-wrap:wrap; }
+    .crops figure, .crops img { width:120px; }
+    .crops img { height:120px; }
+    #history .del { visibility:visible; }  /* no hover on touch screens */
+    table.logtable { display:block; overflow-x:auto; white-space:nowrap; }
+    .card { padding:12px; }
+    #panel { min-height:50vh; }
+  }
   ::-webkit-scrollbar { width:10px; height:10px; } ::-webkit-scrollbar-thumb { background:var(--ink); border-radius:999px; border:2px solid var(--card); }
 </style>
 </head>
@@ -128,7 +208,10 @@
     <h1>Conan<span>Image geolocation</span></h1>
     <p>Upload a photo. It goes through extraction (<code>scripts/full_run.sh</code>), then the model guesses where it was taken.</p>
   </div>
-  <div class="meta" id="clock"></div>
+  <div class="head-right">
+    <div class="meta spend" id="spend" title="LLM spend from out/spend.jsonl. Left = CREDIT_BUDGET - spent (an estimate: Anthropic has no balance API)">no runs yet</div>
+    <div class="meta" id="clock"></div>
+  </div>
 </header>
 
 <div class="layout">
@@ -139,6 +222,7 @@
   </aside>
 
   <main>
+    <div class="leftcol">
     <section class="card">
       <h2>Photo</h2>
       <div id="drop">Drop a photo or click to choose<br><span class="muted">JPEG, PNG or WEBP, up to 30 MB</span></div>
@@ -147,13 +231,34 @@
       <button id="run" disabled>Analyze</button>
     </section>
 
+    <section class="card" id="toolsCard" title="Tools the agent may use. Off = removed from the run completely">
+      <h2>Tools <span id="toolsCount"></span></h2>
+      <div id="toolList"><div class="muted">Loading…</div></div>
+    </section>
+
+    </div>
+
+
+    <div class="rightcol">
     <section class="card" id="status-card">
       <h2>Progress</h2>
       <div class="steps" id="steps">
         <div>1. Init</div><div>2. Config</div><div>3. Extract</div><div>4. Clues</div><div>5. Reason</div>
       </div>
       <div id="status">Ready. Choose a photo to start.</div>
-      <pre id="log"></pre>
+      <div id="approval" class="hidden">
+        <div class="q">The agent wants to run a tool. Allow it?</div>
+        <code id="approvalCall"></code>
+        <div class="btns">
+          <button class="yes" data-answer="yes">Yes</button>
+          <button class="no" data-answer="no">No</button>
+          <button class="all" data-answer="all" title="Allow this tool for the rest of the run">Allow all</button>
+        </div>
+      </div>
+      <div class="logbox" id="logbox">
+        <button id="logFull" title="Fullscreen (Esc to exit)">⤢</button>
+        <pre id="log"></pre>
+      </div>
     </section>
 
     <section class="card" id="panel">
@@ -171,6 +276,14 @@
             <div><h2>Follow-up queries</h2><ul id="queries"></ul></div>
             <div><h2>OCR corrections</h2><ul id="fixes"></ul></div>
             <div><h2>Visual observations</h2><ul id="seen"></ul></div>
+          </div>
+          <div id="sourcesBox" class="hidden">
+            <h2>Sources</h2>
+            <p class="muted">Links the tools returned during the run. ★ = named in the answer.</p>
+            <div class="cols2">
+              <div><h3>Wikipedia</h3><ul id="srcWiki"></ul></div>
+              <div><h3>Map (OpenStreetMap)</h3><ul id="srcMap"></ul></div>
+            </div>
           </div>
         </div>
         <p class="placeholder">No result yet. Analyze a photo or open a past run.</p>
@@ -200,6 +313,7 @@
         <div class="pager hidden" id="logPager"></div>
       </div>
     </section>
+    </div>
   </main>
 </div>
 
@@ -268,6 +382,7 @@ $("run").onclick = async () => {
 
   const form = new FormData();
   form.append("file", chosen);
+  if (toolsAll.length) form.append("tools", chosenTools().join(","));  // "" = no tools
   const res = await fetch("/api/v1/runs", { method: "POST", body: form });
   const body = await res.json();
   if (!res.ok) {
@@ -294,8 +409,11 @@ $("run").onclick = async () => {
     if (m) { step = Number(m[1]); setStep(step, "active"); }
     log(line);
   };
+  events.addEventListener("approval", (e) => showApproval(body.id, JSON.parse(e.data)));
+  events.addEventListener("approval_done", hideApproval);  // answered here, elsewhere or timed out
   events.addEventListener("end", async (e) => {
     events.close();
+    hideApproval();
     clearInterval(timer);
     const status = JSON.parse(e.data).status;
     const secs = Math.round((Date.now() - started) / 1000);
@@ -310,8 +428,50 @@ $("run").onclick = async () => {
     busy = false;
     $("run").disabled = false;
     loadHistory();
+    loadSpend();
   });
 };
+
+// ---- tool approval ----------------------------------------------------------
+
+// e.g. find_place(name="Place Saint-Georges", city="Paris")
+function callText(req) {
+  const args = Object.entries(req.input || {}).map(([k, v]) => `${k}=${JSON.stringify(v)}`).join(", ");
+  return `${req.tool}(${args})`;
+}
+
+// Log fullscreen: the corner button toggles it, Esc closes it.
+function setLogFull(on) {
+  $("logbox").classList.toggle("full", on);
+  $("logFull").textContent = on ? "⤡" : "⤢";
+  $("logFull").title = on ? "Exit fullscreen (Esc)" : "Fullscreen (Esc to exit)";
+  $("log").scrollTop = $("log").scrollHeight;
+}
+$("logFull").onclick = () => setLogFull(!$("logbox").classList.contains("full"));
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") setLogFull(false); });
+
+function showApproval(runId, req) {
+  setLogFull(false);  // the approval box sits outside the log, so leave fullscreen to show it
+  $("approvalCall").textContent = callText(req);  // textContent: input comes from the model
+  [...$("approval").querySelectorAll("button")].forEach((b) => {
+    b.disabled = false;
+    b.onclick = async () => {
+      $("approval").querySelectorAll("button").forEach((x) => { x.disabled = true; });
+      const res = await fetch(`/api/v1/runs/${runId}/approval`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ answer: b.dataset.answer }),
+      });
+      if (!res.ok) log("approval failed: " + ((await res.json()).error?.message || res.statusText));
+      hideApproval();
+    };
+  });
+  $("approval").classList.remove("hidden");
+}
+
+function hideApproval() {
+  $("approval").classList.add("hidden");
+}
 
 // ---- history ----------------------------------------------------------------
 
@@ -407,6 +567,7 @@ async function loadHistory() {
     del.title = "Delete this run";
     del.onclick = (e) => { e.stopPropagation(); deleteRun(r.id, r.filename); };
     li.append(img, info, del);
+    li.title = "Tools: " + (r.tools == null ? "all" : r.tools.join(", ") || "none");
     li.onclick = () => openRun(r.id);
     ul.append(li);
   });
@@ -510,6 +671,21 @@ function showResult(r) {
   fill("fixes", r.corrected_text, (t) => el("li", t));
   fill("seen", r.seen_in_image, (t) => el("li", t));
 
+  // Sources: links from the tool results (none for runs made before this was added).
+  const sources = r.sources || [];
+  $("sourcesBox").classList.toggle("hidden", !sources.length);
+  const link = (x) => {
+    const li = el("li", null, "src" + (x.used ? " used" : ""));
+    const a = el("a", x.title);
+    a.href = x.url;
+    a.target = "_blank";
+    a.rel = "noopener";
+    li.append(a, el("span", x.tool, "muted"));
+    return li;
+  };
+  fill("srcWiki", sources.filter((x) => x.kind === "wiki"), link);
+  fill("srcMap", sources.filter((x) => x.kind === "map"), link);
+
   $("result").classList.remove("hidden");
   setTab("assess");
 }
@@ -530,7 +706,60 @@ function showInputs(run) {
   $("inputs").classList.remove("hidden");
 }
 
+// ---- tools -------------------------------------------------------------------
+// The off list is kept in the browser, so a new tool starts on.
+const TOOLS_OFF_KEY = "conan.toolsOff";
+let toolsAll = [];
+const toolsOff = () => { try { return JSON.parse(localStorage.getItem(TOOLS_OFF_KEY)) || []; } catch { return []; } };
+const chosenTools = () => toolsAll.map((t) => t.name).filter((n) => !toolsOff().includes(n));
+
+function renderTools() {
+  const off = toolsOff();
+  const box = $("toolList");
+  box.replaceChildren();
+  toolsAll.forEach((t) => {
+    const row = el("label", null, "tool" + (off.includes(t.name) ? " off" : ""));
+    const box_ = el("input");
+    box_.type = "checkbox";
+    box_.checked = !off.includes(t.name);
+    box_.onchange = () => {
+      const now = toolsOff().filter((n) => n !== t.name);
+      if (!box_.checked) now.push(t.name);
+      localStorage.setItem(TOOLS_OFF_KEY, JSON.stringify(now));
+      renderTools();
+    };
+    const text = el("div");
+    text.append(el("b", t.name + (t.approval ? " · asks first" : "")), el("span", t.description));
+    row.append(box_, text);
+    box.append(row);
+  });
+  $("toolsCount").textContent = `${chosenTools().length}/${toolsAll.length} on`;
+}
+
+async function loadTools() {
+  toolsAll = await (await fetch("/api/v1/runs/tools")).json();
+  renderTools();
+}
+
+// Top bar: last run tokens and cost, total spent, and budget left (when CREDIT_BUDGET is set).
+const usd = (n) => "$" + (n < 1 ? n.toFixed(3) : n.toFixed(2));
+async function loadSpend() {
+  const s = await (await fetch("/api/v1/runs/spend")).json();
+  const box = $("spend");
+  if (!s.last) { box.textContent = "no runs yet"; return; }
+  const k = (n) => n >= 1e6 ? (n / 1e6).toFixed(1) + "M" : n >= 1000 ? Math.round(n / 1000) + "k" : String(n);
+  const lastCost = s.last.usd == null ? "?" : usd(s.last.usd);
+  let html = `Last run: <b>${k(s.last.tokens)}</b> tokens · <b>${lastCost}</b> | Total: <b>${s.runs}</b> runs · <b>${k(s.total_tokens)}</b> tokens · <b>${usd(s.spent)}</b>`;
+  if (s.budget) {
+    const low = s.left < s.budget * 0.1 ? ' class="low"' : "";
+    html += ` | Left: <b${low}>~${usd(s.left)}</b> of ${usd(s.budget)}`;
+  }
+  box.innerHTML = html;
+}
+
 loadHistory();
+loadSpend();
+loadTools();
 const tick = () => { $("clock").textContent = new Date().toLocaleTimeString(); };
 tick(); setInterval(tick, 1000);
 </script>

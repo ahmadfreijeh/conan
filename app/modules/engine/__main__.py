@@ -1,5 +1,5 @@
 """CLI: uv run python -m app.modules.engine samples/photo.jpeg [--out out/photo] [--no-detect]
-[--no-ocr] [--reason] [--from-payload out/photo/payload.json]"""
+[--no-ocr] [--reason] [--from-payload out/photo/payload.json] [--tools find_place,wiki_nearby]"""
 
 import argparse
 import sys
@@ -25,6 +25,10 @@ def main(argv: list[str] | None = None) -> int:
         "--from-payload",
         help="reuse a saved payload.json instead of running Phase 1 again (use with --reason)",
     )
+    parser.add_argument(
+        "--tools",
+        help='tools the agent gets, comma-separated; "" = none (default: AGENT_TOOLS, else all)',
+    )
     args = parser.parse_args(argv)
 
     try:
@@ -46,14 +50,17 @@ def main(argv: list[str] | None = None) -> int:
 
     import anthropic
 
-    from app.modules.agent.reason import reason  # only import Strands when needed
+    from app.modules.agent.reason import default_approve, reason  # import Strands when needed
     from app.modules.engine.prepare import prepare_for_agent, save_agent_input
 
     try:
         agent_input = prepare_for_agent(payload)
         if args.out:
             save_agent_input(agent_input, args.out)  # clues.json + sent/, to check the input
-        result = reason(agent_input)
+        tool_names = (
+            None if args.tools is None else [n.strip() for n in args.tools.split(",") if n.strip()]
+        )
+        result = reason(agent_input, approve=default_approve(), tool_names=tool_names)
     except (RuntimeError, anthropic.APIError) as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1

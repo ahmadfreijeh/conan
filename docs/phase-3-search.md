@@ -2,12 +2,12 @@
 
 Candidate regions in, real places with coordinates out. The agent gets tools to look things up, the way a person would open maps, search the web and look at street photos.
 
-Status: **planned**. Nothing built yet.
+Status: **in progress**. Step 1 (map tools, `app/modules/agent/tools/places.py`) and step 3 (Wikipedia tools, `app/modules/agent/tools/wiki.py`) are built and passed to the agent; it calls them during a `--reason` run.
 
 ## In and out
 
 - **In:** `reason.json` from Phase 2: ranked candidates (country, city, area, evidence) and `search_queries`, each tagged `places`, `web`, `wiki` or `map`.
-- **Out:** a short list of real places, each with name, coordinates, the clues that match it, and reference photos for Phase 4 (Verify).
+- **Out:** a short list of real places, each with name, coordinates, the clues that match it, and reference photos for Phase 5 (Verify).
 
 ## Many sources, one per kind of clue
 
@@ -35,7 +35,7 @@ flowchart LR
     K --> C
     C --> F[Keep places<br/>most clues agree on]
     F --> P[Street + review photos<br/>for each place]
-    P --> V[Phase 4: Verify]
+    P --> V[Phase 5: Verify]
 ```
 
 - Each clue gives a few possible places, and the next clue rules some out.
@@ -44,16 +44,16 @@ flowchart LR
 
 ## Human in the loop
 
-- A person approves tool use before paid or slow lookups run.
+- A person approves tool use before paid or slow lookups run. Built: tools in `NEEDS_APPROVAL` pause the agent; the person answers yes, no, or all (allow that tool for the rest of the run). `AGENT_APPROVAL=all` asks for every tool.
 - A person can stop the search, or send it back to search deeper.
 
 ## Steps
 
 | # | Step | What it does | Status |
 |---|---|---|---|
-| 1 | Map / place tool | `@tool` that finds places by name near a city; returns name + coordinates | Planned |
+| 1 | Map / place tool | `find_place` (name near a city -> coordinates) and `reverse_geocode` (GPS -> address), OpenStreetMap Nominatim | Done |
 | 2 | Web search tool | `@tool` for sign text, phone numbers, brands | Planned |
-| 3 | Wiki tool | `@tool` for landmarks | Planned |
+| 3 | Wiki tools | `wiki_search` (free text, plus `word~`, `word*`, `intitle:/fragment/` for misread OCR words), `wiki_summary` (one article: intro, description, coordinates, names in other languages), `wiki_nearby` (places around a point, optional keyword) | Done |
 | 4 | Run Phase 2 queries | Agent runs `search_queries` first, then writes its own | Planned |
 | 5 | Merge and rank | Join results from all sources, keep places with the most matching clues | Planned |
 | 6 | Reference photos | Fetch street and review photos for each kept place | Planned |

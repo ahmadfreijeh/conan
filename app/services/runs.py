@@ -4,6 +4,10 @@ Local testing only. Each run lives in out/uploads/<id>/: the photo, run.json (st
 log.txt and everything the script writes (payload.json, clues.json, sent/, reason.json).
 That folder is the history; it survives restarts. One run goes at a time so the models
 are not loaded twice. Later this can move to the Arq worker and the database.
+
+Tool approval: when the agent needs a yes/no, the run prints one APPROVAL_PREFIX line and
+waits on stdin. The run is then "waiting"; answer() writes the person's reply to stdin.
+If nobody answers within AGENT_APPROVAL_TIMEOUT seconds, the server answers "no" itself.
 """
 
 import asyncio
@@ -19,6 +23,7 @@ from typing import Any
 
 from app.core.config import get_settings
 from app.core.errors import AppError, NotFoundError
+from app.modules.agent.constants import APPROVAL_PREFIX
 
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / "scripts" / "full_run.sh"
@@ -31,6 +36,11 @@ class RunBusyError(AppError):
     code = "run_busy"
 
 
+class NotWaitingError(AppError):
+    status_code = 409
+    code = "not_waiting"
+
+
 @dataclass
 class LiveRun:
     """A run that is going right now; its log is kept in memory until it ends."""
@@ -39,10 +49,21 @@ class LiveRun:
     dir: Path
     lines: list[str] = field(default_factory=list)
     finished: bool = False
+    proc: asyncio.subprocess.Process | None = None
+    waiting: dict | None = None  # the approval request ({"tool", "input"}) it waits on
+    approvals: int = 0  # requests so far; the event stream uses it to spot a new one
 
 
 def _read_json(path: Path) -> Any:
     return json.loads(path.read_text()) if path.exists() else None
+
+
+def _call_text(request: dict) -> str:
+    """e.g. find_place(name="Place Saint-Georges", city="Paris")"""
+    args = ", ".join(
+        f"{k}={json.dumps(v, ensure_ascii=False)}" for k, v in request.get("input", {}).items()
+    )
+    return f"{request.get('tool')}({args})"
 
 
 class RunManager:
@@ -52,7 +73,10 @@ class RunManager:
 
     # ---- start ---------------------------------------------------------------
 
-    async def start(self, data: bytes, suffix: str, filename: str) -> str:
+    async def start(
+        self, data: bytes, suffix: str, filename: str, tools: list[str] | None = None
+    ) -> str:
+        """Start a run. tools = the tool names the agent gets (None = all, [] = none)."""
         if any(not r.finished for r in self._live.values()):
             raise RunBusyError("Another run is still going; wait for it to finish")
 
@@ -68,17 +92,21 @@ class RunManager:
             image=image.name,
             created_at=datetime.now(UTC).isoformat(),
             status="running",
+            tools=tools,
         )
 
         run = LiveRun(id=run_id, dir=run_dir)
         self._live[run_id] = run
-        task = asyncio.create_task(self._execute(run, image))
+        task = asyncio.create_task(self._execute(run, image, tools))
         self._tasks.add(task)  # keep a reference so the task is not garbage-collected
         task.add_done_callback(self._tasks.discard)
         return run_id
 
-    async def _execute(self, run: LiveRun, image: Path) -> None:
+    async def _execute(self, run: LiveRun, image: Path, tools: list[str] | None) -> None:
         status = "failed"
+        env = {**os.environ, "PYTHONUNBUFFERED": "1"}  # print lines as they happen
+        if tools is not None:
+            env["AGENT_TOOLS"] = ",".join(tools)  # read by build_agent(); "" = no tools
         try:
             proc = await asyncio.create_subprocess_exec(
                 "bash",
@@ -86,21 +114,58 @@ class RunManager:
                 str(image),
                 str(run.dir),
                 cwd=ROOT,
+                stdin=asyncio.subprocess.PIPE,  # approval answers go here
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.STDOUT,
-                env={**os.environ, "PYTHONUNBUFFERED": "1"},  # print lines as they happen
+                env=env,
             )
+            run.proc = proc
             assert proc.stdout is not None
             async for raw in proc.stdout:
-                run.lines.append(raw.decode(errors="replace").rstrip("\n"))
+                line = raw.decode(errors="replace").rstrip("\n")
+                if line.startswith(APPROVAL_PREFIX):
+                    request = json.loads(line[len(APPROVAL_PREFIX) :])
+                    run.waiting = request
+                    run.approvals += 1
+                    line = f"[approval] waiting: {_call_text(request)}"
+                    self._start_approval_timer(run)
+                run.lines.append(line)
             status = "done" if await proc.wait() == 0 else "failed"
         except Exception as exc:  # report any launch error in the log instead of hanging
             run.lines.append(f"error: {exc}")
         finally:
+            run.waiting = None
             (run.dir / "log.txt").write_text("\n".join(run.lines) + "\n")
             self._write_meta(run.dir, status=status, finished_at=datetime.now(UTC).isoformat())
             run.finished = True
             self._live.pop(run.id, None)  # from now on it is read from disk
+
+    def _start_approval_timer(self, run: LiveRun) -> None:
+        """After AGENT_APPROVAL_TIMEOUT seconds, answer "no" if this request still waits."""
+        timeout = get_settings().agent_approval_timeout
+        if timeout <= 0:
+            return  # 0 = wait forever
+        request_no = run.approvals
+
+        async def expire() -> None:
+            await asyncio.sleep(timeout)
+            if run.waiting is not None and run.approvals == request_no:  # not answered yet
+                note = f"no answer in {timeout:g}s, counted as no"
+                await self.answer(run.id, "no", note=note)
+
+        task = asyncio.create_task(expire())
+        self._tasks.add(task)
+        task.add_done_callback(self._tasks.discard)
+
+    async def answer(self, run_id: str, answer: str, note: str | None = None) -> None:
+        """Send the person's reply (yes / no / all) to the run that waits for approval."""
+        run = self._live.get(run_id)
+        if run is None or run.waiting is None or run.proc is None or run.proc.stdin is None:
+            raise NotWaitingError("This run is not waiting for an approval")
+        run.lines.append(f"[approval] {note or answer}: {_call_text(run.waiting)}")
+        run.waiting = None
+        run.proc.stdin.write(f"{answer}\n".encode())
+        await run.proc.stdin.drain()
 
     # ---- read ----------------------------------------------------------------
 
@@ -177,8 +242,10 @@ class RunManager:
 
     def detail(self, run_id: str) -> dict:
         run_dir = self._dir(run_id)
+        live = self._live.get(run_id)
         return {
             **self._meta(run_dir),
+            "waiting": live.waiting if live else None,
             "log": self.log_lines(run_id),
             "result": _read_json(run_dir / "reason.json"),
             "clues": _read_json(run_dir / "clues.json"),
