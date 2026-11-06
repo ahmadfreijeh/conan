@@ -13,7 +13,7 @@ import json
 import sys
 
 from strands import Agent
-from strands.hooks import BeforeToolCallEvent
+from strands.hooks import AfterToolCallEvent, BeforeToolCallEvent
 
 from app.core.config import get_settings
 from app.modules.agent.schemas import ReasonResult
@@ -100,10 +100,44 @@ def print_tool_call(event: BeforeToolCallEvent) -> None:
     print(f"-> {event.tool_use['name']}({args}){skipped}", file=sys.stderr)
 
 
+def _summarize(result: dict) -> str:
+    """One short line for a tool result: places found, no match with hints, or the error."""
+    if "error" in result:
+        return f"error: {result['error']}"
+    if "places" in result:
+        places = result["places"]
+        if not places:
+            return f"no match (hints: {'; '.join(result.get('hints', []))})"
+        top = "; ".join(f"{p['name']} ({p['lat']:.4f}, {p['lon']:.4f})" for p in places[:3])
+        more = f" (+{len(places) - 3} more)" if len(places) > 3 else ""
+        return f"{len(places)} places: {top}{more}"
+    if "place" in result:  # reverse_geocode
+        return f"address: {result['place'].get('address', '')}"
+    return json.dumps(result, ensure_ascii=False)[:200]
+
+
+def print_tool_result(event: AfterToolCallEvent) -> None:
+    """Show each lookup's result in the terminal (stderr), e.g. <- find_place: 2 places: ..."""
+    # Skip the structured answer and cancelled calls (print_tool_call already showed the skip).
+    if event.tool_use["name"] == ReasonResult.__name__ or event.cancel_message:
+        return
+    name = event.tool_use["name"]
+    if event.exception:
+        print(f"<- {name}: failed: {event.exception}", file=sys.stderr)
+        return
+    text = "".join(part.get("text", "") for part in event.result.get("content", []))
+    try:
+        line = _summarize(json.loads(text))
+    except (ValueError, TypeError, KeyError, AttributeError):
+        line = text[:200]
+    print(f"<- {name}: {line}", file=sys.stderr)
+
+
 # Hooks for the same moment run in this order. Approval goes first: it pauses before the
 # limit counts the call, so a resumed call is counted once. Print goes last, to show skips.
 HOOKS = [
     ask_approval,  # before each tool call: ask a person if the tool needs it
     limit_lookups,  # before each tool call: stop after AGENT_MAX_LOOKUPS
     print_tool_call,  # before each tool call: print it
+    print_tool_result,  # after each tool call: print a short summary of its result
 ]

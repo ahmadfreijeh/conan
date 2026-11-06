@@ -51,6 +51,12 @@
   #status { font:600 13px var(--sans); margin-bottom:10px; }
   #status-card { display:flex; flex-direction:column; min-height:0; }
   #log { flex:none; height:190px; overflow-y:scroll; background:var(--ink); color:#b8f5d6; font:12px/1.55 var(--mono); padding:12px; border:var(--line); border-radius:8px; overflow-x:hidden; white-space:pre-wrap; margin:0; }
+  /* log terminal: corner button toggles fullscreen */
+  .logbox { position:relative; flex:none; }
+  #logFull { position:absolute; top:8px; right:22px; z-index:1; width:auto; margin:0; padding:2px 8px; font:700 14px/1 var(--mono);
+             background:var(--card); box-shadow:var(--shadow-sm); text-transform:none; letter-spacing:0; }
+  .logbox.full { position:fixed; inset:16px; z-index:50; }
+  .logbox.full #log { height:100%; box-shadow:var(--shadow); font-size:13px; }
   .hidden { display:none; }
   /* tool approval */
   #approval { border:var(--line); border-radius:8px; background:var(--warn); box-shadow:var(--shadow-sm); padding:10px 12px; margin-bottom:10px; }
@@ -172,7 +178,10 @@
           <button class="all" data-answer="all" title="Allow this tool for the rest of the run">Allow all</button>
         </div>
       </div>
-      <pre id="log"></pre>
+      <div class="logbox" id="logbox">
+        <button id="logFull" title="Fullscreen (Esc to exit)">⤢</button>
+        <pre id="log"></pre>
+      </div>
     </section>
 
     <section class="card" id="panel">
@@ -343,7 +352,18 @@ function callText(req) {
   return `${req.tool}(${args})`;
 }
 
+// Log fullscreen: the corner button toggles it, Esc closes it.
+function setLogFull(on) {
+  $("logbox").classList.toggle("full", on);
+  $("logFull").textContent = on ? "⤡" : "⤢";
+  $("logFull").title = on ? "Exit fullscreen (Esc)" : "Fullscreen (Esc to exit)";
+  $("log").scrollTop = $("log").scrollHeight;
+}
+$("logFull").onclick = () => setLogFull(!$("logbox").classList.contains("full"));
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") setLogFull(false); });
+
 function showApproval(runId, req) {
+  setLogFull(false);  // the approval box sits outside the log, so leave fullscreen to show it
   $("approvalCall").textContent = callText(req);  // textContent: input comes from the model
   [...$("approval").querySelectorAll("button")].forEach((b) => {
     b.disabled = false;
