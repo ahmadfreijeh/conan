@@ -32,6 +32,14 @@ class Settings(BaseSettings):
     reason_max_tokens: int = 16000
     reason_max_crops: int = 6  # close-up object crops sent with the photo; 0 = none
 
+    # Agent tools (app/modules/agent/tools)
+    agent_max_lookups: int = 10  # tool calls per run; more are cancelled (agent/hooks.py)
+    # Ask a person before tool calls: listed = tools in NEEDS_APPROVAL, all = every tool, none
+    agent_approval: Literal["listed", "all", "none"] = "listed"
+    agent_approval_timeout: float = 300  # UI: seconds to wait for an answer, then "no"; 0 = forever
+    places_url: str = "https://nominatim.openstreetmap.org"  # OpenStreetMap Nominatim
+    places_timeout: float = 10.0  # seconds per map lookup
+
     @property
     def is_local(self) -> bool:
         return self.app_env == "local"
