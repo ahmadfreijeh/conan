@@ -199,3 +199,31 @@ Check candidates against the photo and pick the final location.
 ### Known issues
 
 - [ ] Test UI live log sometimes shows the lines after the last approval twice (display only; `log.txt` is clean). Likely an event-stream reconnect; check for two `GET .../events` per run
+
+## Open discussions
+
+Choices made for Phase 1 that are still open to change.
+
+### Why PaddleOCR for text?
+
+Photos for geolocation have street signs, shop names and plates, often in Arabic and English side by side.
+
+- **PaddleOCR (chosen):** good on scene text (signs, not just scanned pages), has a ready Arabic reader, runs locally on CPU, models are small.
+- **Tesseract:** made for clean scanned documents; weak on tilted or noisy text in photos.
+- **EasyOCR:** easy to use and has Arabic, but generally slower and less accurate on scene text.
+- **Cloud OCR (Google Vision, AWS Textract):** very accurate, but costs per call and sends the photo off the machine (against "local first").
+- **Claude vision only:** can read text, but costs tokens on every photo; we'd rather send it clean text and a few crops.
+
+Open: swap in a stronger Arabic reader if street signs keep coming out wrong.
+
+### Why Grounding DINO for objects?
+
+We need to find things that hint at a place (road signs, license plates, flags, shop signs, mosques, bollards), and that list keeps changing.
+
+- **Grounding DINO (chosen):** open-vocabulary: you give it the labels as text, so adding a new clue type is a text change, not retraining. The tiny model runs locally.
+- **YOLO (v8/v11):** fast and easy, but only knows its fixed classes (COCO: car, person...); new clue types need labeled data and training.
+- **OWL-ViT / OWLv2:** also open-vocabulary, but generally weaker on small objects like signs.
+- **Florence-2 / other VLMs:** can detect and caption, but heavier and slower on a laptop.
+- **Cloud vision APIs:** fixed labels, cost per call, and the photo leaves the machine.
+
+Open: the detector sits behind an interface, so it can be swapped (e.g. YOLO-World for speed) without touching the rest.
