@@ -52,7 +52,7 @@ Each phase writes a file the next phase reads. So I can rerun one phase without 
 flowchart LR
     E[Phase 1<br/>Extract] -- payload.json --> R[Phase 2<br/>Reason]
     R -- reason.json<br/>places + queries --> S[Phase 3<br/>Search]
-    S -- candidates<br/>+ coordinates --> V[Phase 4<br/>Verify]
+    S -- candidates<br/>+ coordinates --> V[Phase 5<br/>Verify]
     style E fill:#d4edda
     style R fill:#fff3cd
 ```
@@ -94,4 +94,4 @@ flowchart LR
 
 ## What's next
 
-Phase 3 gives the agent search tools, Phase 4 checks candidates against reference photos, then runs move into the worker and Postgres (with PostGIS). Full list: [Roadmap](../README.md#roadmap).
+Phase 3 gives the agent search tools, Phase 4 adds a vector DB (RAG), Phase 5 checks candidates against reference photos, then runs move into the worker and Postgres (with PostGIS). Full list: [Roadmap](../README.md#roadmap).

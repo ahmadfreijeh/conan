@@ -276,7 +276,16 @@ Give the agent tools to look up the candidate places, using many sources (maps, 
 - [ ] Merge results from all sources and rank places
 - [ ] Find reference photos for each candidate
 
-### Phase 4: Verify
+### Phase 4: Retrieve (RAG)
+
+Give the agent memory and reference data with a vector DB (Qdrant: local mode for dev, server or cloud later).
+
+- [ ] Photo similarity: match the photo against geotagged reference photos (CLIP / GeoCLIP embeddings)
+- [ ] Clue knowledge base: notes like plate colors, scripts, phone formats → country; `search_clues` tool
+- [ ] Fuzzy place names: embed OSM place names so misread OCR signs still match
+- [ ] Past runs: save solved runs and reuse them for photos with similar clues
+
+### Phase 5: Verify
 
 Check candidates against the photo and pick the final location.
 

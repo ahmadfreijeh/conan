@@ -29,7 +29,7 @@ Run it: `uv run python -m app.modules.engine samples/photo.jpeg --out out/photo`
 - Engine lives in `app/modules/engine/`, independent of FastAPI, DB and auth.
 - OCR recognizers: `PP-OCRv6_medium_rec` (English/Latin + Chinese) and `arabic_PP-OCRv5_mobile_rec` (Arabic). Passing a model name to `PaddleOCR(...)` makes it ignore `lang`, so models are named explicitly.
 - Object labels: 284 words in 16 groups (`LABEL_GROUPS` in `app/modules/engine/constants.py`), sent in batches of 25 (max 78 of 256 prompt tokens). No people or faces. OCR zooms into every object in the "text" group.
-- Grounding DINO (object detection) is not DINOv2 (photo similarity, used in Phase 4: Verify).
+- Grounding DINO (object detection) is not DINOv2 (photo similarity, used in Phase 5: Verify).
 
 ## Known limits
 

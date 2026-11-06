@@ -7,7 +7,7 @@ Status: **in progress**. Step 1 (map tools) built in `app/modules/agent/tools/pl
 ## In and out
 
 - **In:** `reason.json` from Phase 2: ranked candidates (country, city, area, evidence) and `search_queries`, each tagged `places`, `web`, `wiki` or `map`.
-- **Out:** a short list of real places, each with name, coordinates, the clues that match it, and reference photos for Phase 4 (Verify).
+- **Out:** a short list of real places, each with name, coordinates, the clues that match it, and reference photos for Phase 5 (Verify).
 
 ## Many sources, one per kind of clue
 
@@ -35,7 +35,7 @@ flowchart LR
     K --> C
     C --> F[Keep places<br/>most clues agree on]
     F --> P[Street + review photos<br/>for each place]
-    P --> V[Phase 4: Verify]
+    P --> V[Phase 5: Verify]
 ```
 
 - Each clue gives a few possible places, and the next clue rules some out.
