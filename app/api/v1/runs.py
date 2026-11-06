@@ -6,13 +6,15 @@ from collections.abc import AsyncIterator
 from pathlib import Path
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, Form, Header, Query, UploadFile
+from fastapi import APIRouter, Form, Header, Query, Request, UploadFile
 from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel
 
+from app.api.deps import RedisDep
 from app.core.errors import AppError
 from app.modules.agent import spend
 from app.modules.agent.tools import select_tools, tool_list
+from app.services.rate_limit import check_run_limit, client_ip, record_run
 from app.services.runs import run_manager
 
 router = APIRouter(prefix="/runs", tags=["runs"])
@@ -41,11 +43,18 @@ def _page(items: list[dict], page: int, size: int) -> dict:
 
 @router.post("", status_code=201)
 async def start_run(
+    request: Request,
+    redis: RedisDep,
     file: UploadFile,
     tools: Annotated[str | None, Form()] = None,
 ) -> dict:
     """Upload a photo and start a run. tools: comma-separated names the agent gets
-    (left out = all, "" = none); a tool that is off is not given to the agent at all."""
+    (left out = all, "" = none); a tool that is off is not given to the agent at all.
+
+    Limited to RUN_LIMIT_PER_HOUR runs per IP per rolling hour (429 + Retry-After),
+    except when APP_ENV=local. Only runs that start count."""
+    ip = client_ip(request)
+    await check_run_limit(redis, ip)
     suffix = Path(file.filename or "").suffix.lower()
     if suffix not in ALLOWED_SUFFIXES:
         raise AppError("Upload a JPEG, PNG or WebP photo")
@@ -59,6 +68,7 @@ async def start_run(
         except RuntimeError as exc:
             raise AppError(str(exc)) from None
     run_id = await run_manager.start(data, suffix, file.filename or "photo", names)
+    await record_run(redis, ip)
     return {"id": run_id}
 
 

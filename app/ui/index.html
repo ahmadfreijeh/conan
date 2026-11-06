@@ -164,6 +164,41 @@
   .pane.on { display:block; }
   .placeholder { color:var(--muted); font-weight:500; }
   #result:not(.hidden) ~ .placeholder, #inputs:not(.hidden) ~ .placeholder { display:none; }
+  /* ---- responsive: the 3 full-height columns need a wide screen ---- */
+  /* Tablet / small laptop: History moves under the work area; the page scrolls. */
+  @media (max-width: 1200px) {
+    html, body { height:auto; }
+    body { overflow:auto; }
+    .layout { grid-template-columns: 1fr; grid-template-rows: auto; }
+    .layout > *, main > *, .leftcol > *, .rightcol > * { min-width:0; }  /* let columns shrink */
+    .layout > aside { order:2; max-height:60vh; }
+    main { grid-template-rows: auto; }
+    .leftcol, .rightcol { overflow:visible; }
+    .leftcol > #toolsCard { flex:none; }
+    #toolList { max-height:none; overflow:visible; }
+    #panel { min-height:70vh; }
+  }
+  /* Phone: everything in one column, in the order you use it. */
+  @media (max-width: 760px) {
+    header { flex-wrap:wrap; gap:10px; padding:12px 14px; }
+    header h1 { font-size:22px; }
+    header p { display:none; }
+    .head-right { flex-wrap:wrap; width:100%; }
+    .spend { font-size:11px; }
+    .layout { padding:12px; gap:14px; }
+    main { grid-template-columns: 1fr; gap:14px; }
+    .leftcol, .rightcol { gap:14px; padding:0; }
+    .cols, .cols2 { grid-template-columns: 1fr; }
+    .steps { flex-wrap:wrap; }
+    .steps div { flex:1 1 30%; }
+    .tabs { flex-wrap:wrap; }
+    .crops figure, .crops img { width:120px; }
+    .crops img { height:120px; }
+    #history .del { visibility:visible; }  /* no hover on touch screens */
+    table.logtable { display:block; overflow-x:auto; white-space:nowrap; }
+    .card { padding:12px; }
+    #panel { min-height:50vh; }
+  }
   ::-webkit-scrollbar { width:10px; height:10px; } ::-webkit-scrollbar-thumb { background:var(--ink); border-radius:999px; border:2px solid var(--card); }
 </style>
 </head>

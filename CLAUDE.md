@@ -36,6 +36,7 @@ All commands go through uv (no venv activation needed). Python 3.12.
 - No Docker (too heavy on the dev machine). Postgres 16 (EnterpriseDB install) and Redis run natively on macOS.
 - Never read or edit `.env` (it holds the user's secrets). Put new settings in `.env.example` and tell the user what to add to their `.env`.
 - Config comes from `.env` (see `.env.example`) via `app/core/config.py::get_settings()`, including engine settings (device, detection/OCR cutoffs, OCR model names).
+- Run rate limit (`app/services/rate_limit.py`, Redis): `RUN_LIMIT_PER_HOUR` runs per IP per rolling hour on `POST /api/v1/runs`; skipped when `APP_ENV=local` unless `RUN_LIMIT_ON_LOCAL=true`.
 - PostGIS is NOT installed yet, so don't use geometry types or the `postgis` extension until it is set up.
 
 ## Architecture

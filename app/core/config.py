@@ -12,6 +12,12 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     database_url: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/conan"
     redis_url: str = "redis://localhost:6379/0"
+    # Runs per IP per rolling hour (POST /api/v1/runs); 0 = no limit. Skipped when
+    # APP_ENV=local unless RUN_LIMIT_ON_LOCAL=true. TRUST_PROXY: read the IP from
+    # X-Forwarded-For (only behind a proxy you run, or anyone can fake it).
+    run_limit_per_hour: int = 3
+    run_limit_on_local: bool = False
+    trust_proxy: bool = False
 
     # Image engine (app/modules/engine)
     engine_device: Literal["auto", "mps", "cpu"] = "auto"  # for DINO; auto = Mac GPU if available
