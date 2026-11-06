@@ -11,6 +11,7 @@ from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel
 
 from app.core.errors import AppError
+from app.modules.agent import spend
 from app.services.runs import run_manager
 
 router = APIRouter(prefix="/runs", tags=["runs"])
@@ -59,6 +60,12 @@ async def list_runs(page: int = Query(1, ge=1), size: int = Query(10, ge=1, le=1
 async def extraction_log(page: int = Query(1, ge=1), size: int = Query(15, ge=1, le=100)) -> dict:
     """Phase 1 run stats from runs.jsonl (time, size, objects, timings, memory), newest first."""
     return _page(run_manager.extraction_log(), page, size)
+
+
+@router.get("/spend")
+async def spend_summary() -> dict:
+    """LLM spend: last run (tokens, USD), total spent, CREDIT_BUDGET and what is left."""
+    return spend.summary()
 
 
 @router.delete("")
