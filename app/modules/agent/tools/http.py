@@ -19,7 +19,15 @@ from collections import OrderedDict
 
 import httpx
 
+from app.core.config import get_settings
+
 USER_AGENT = "conan-geolocation/0.1"
+
+
+def user_agent() -> str:
+    """App name plus the TOOLS_CONTACT setting (Wikipedia and OSM require a contact)."""
+    contact = get_settings().tools_contact
+    return f"{USER_AGENT} ({contact})" if contact else USER_AGENT
 
 
 class ToolError(Exception):
@@ -49,7 +57,7 @@ class ApiClient:
         self.timeout = timeout
         self.min_interval = min_interval
         self.params = params or {}
-        self.headers = {"User-Agent": USER_AGENT, **(headers or {})}
+        self.headers = {"User-Agent": user_agent(), **(headers or {})}
         self._lock = threading.Lock()  # one request at a time, so the wait holds
         self._last_call = 0.0
         self.cache_size = cache_size
