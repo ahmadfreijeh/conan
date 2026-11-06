@@ -61,8 +61,13 @@ def record(model: str, usage: dict) -> dict:
     return line
 
 
+def _tokens(line: dict) -> int:
+    """All tokens of one run: input, cache read, cache write and output."""
+    return sum(line.get(k, 0) for k in ("input", "cache_read", "cache_write", "output"))
+
+
 def summary() -> dict:
-    """Last run, total spent, budget and what is left (None when no CREDIT_BUDGET is set)."""
+    """Last run, run count, total tokens and USD, budget and what is left (None = no budget)."""
     lines = []
     path = _log_path()
     if path.exists():
@@ -72,16 +77,18 @@ def summary() -> dict:
             except json.JSONDecodeError:
                 continue  # skip a broken line
     spent = sum(line.get("usd") or 0 for line in lines)
+    total_tokens = sum(_tokens(line) for line in lines)
     budget = get_settings().credit_budget or None
     last = lines[-1] if lines else None
     if last:
         last = {
             **last,
-            "tokens": last["input"] + last["cache_read"] + last["cache_write"] + last["output"],
+            "tokens": _tokens(last),
         }
     return {
         "last": last,
         "runs": len(lines),
+        "total_tokens": total_tokens,
         "spent": round(spent, 4),
         "budget": budget,
         "left": round(budget - spent, 4) if budget else None,

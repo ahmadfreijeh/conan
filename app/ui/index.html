@@ -712,9 +712,9 @@ async function loadSpend() {
   const s = await (await fetch("/api/v1/runs/spend")).json();
   const box = $("spend");
   if (!s.last) { box.textContent = "no runs yet"; return; }
-  const k = (n) => n >= 1000 ? Math.round(n / 1000) + "k" : String(n);
+  const k = (n) => n >= 1e6 ? (n / 1e6).toFixed(1) + "M" : n >= 1000 ? Math.round(n / 1000) + "k" : String(n);
   const lastCost = s.last.usd == null ? "?" : usd(s.last.usd);
-  let html = `Last run: <b>${k(s.last.tokens)}</b> tokens · <b>${lastCost}</b> | Spent: <b>${usd(s.spent)}</b>`;
+  let html = `Last run: <b>${k(s.last.tokens)}</b> tokens · <b>${lastCost}</b> | Total: <b>${s.runs}</b> runs · <b>${k(s.total_tokens)}</b> tokens · <b>${usd(s.spent)}</b>`;
   if (s.budget) {
     const low = s.left < s.budget * 0.1 ? ' class="low"' : "";
     html += ` | Left: <b${low}>~${usd(s.left)}</b> of ${usd(s.budget)}`;

@@ -99,7 +99,7 @@ Tool approval: if a tool needs approval (`NEEDS_APPROVAL`, or `AGENT_APPROVAL=al
 
 Tools: a Tools card under the Photo card lists every tool with a toggle and a short description per tool (from `GET /api/v1/runs/tools`, the first paragraph of each docstring). Only the tools that are on go to the run; the choice is kept in the browser, and a new tool starts on. Hover a run in the history to see which tools it had (saved in `run.json`).
 
-Top bar: last run's tokens and cost, total spent, and (with `CREDIT_BUDGET` set) about how much credit is left, e.g. `Last run: 54k tokens · $0.059 | Spent: $1.42 | Left: ~$18.58 of $20`. "Left" turns red under 10%. It comes from `GET /api/v1/runs/spend`.
+Top bar: last run's tokens and cost, total spent, and (with `CREDIT_BUDGET` set) about how much credit is left, e.g. `Last run: 54k tokens · $0.059 | Total: 12 runs · 650k tokens · $1.42 | Left: ~$18.58 of $20`. "Left" turns red under 10%. It comes from `GET /api/v1/runs/spend`.
 
 From the CLI, `--reason --out <dir>` saves the same `clues.json` and `sent/` (crops + `crops.json`) before calling the LLM.
 
