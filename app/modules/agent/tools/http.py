@@ -20,8 +20,7 @@ from collections import OrderedDict
 import httpx
 
 from app.core.config import get_settings
-
-USER_AGENT = "conan-geolocation/0.1"
+from app.modules.agent.constants import USER_AGENT
 
 
 def user_agent() -> str:

@@ -67,6 +67,46 @@ NO_TOOLS_TIP = (
     "lon empty, and put the searches you would run in search_queries."
 )
 
+# --- Run state (hooks.py) --------------------------------------------------------
+# Keys in agent.state
+LOOKUPS_KEY = "lookups"  # tool calls made this run
+ALLOWED_KEY = "allowed_tools"  # tools the person answered "all" for, this run
+SOURCES_KEY = "sources"  # links the tools returned this run: {title, url, kind, tool}
+
+# Key in event.invocation_state: ids of tool calls paused for approval. Strands still runs
+# the other hooks when one pauses, so they skip these calls (no double count or print).
+WAITING_KEY = "waiting_for_approval"
+
+# --- Tools: HTTP (tools/http.py) ------------------------------------------------
+USER_AGENT = "conan-geolocation/0.1"
+
+# --- Tools: places (tools/places.py) --------------------------------------------
+# Words too common in place names to count as a match on their own.
+GENERIC_WORDS = {"brasserie", "cafe", "café", "restaurant", "hotel", "bar", "shop", "le", "la"}
+
+# --- Tools: Wikipedia (tools/wiki.py) -------------------------------------------
+# Languages whose article names wiki_summary returns (local names help find_place).
+NAME_LANGS = (
+    "en fr ar es de it pt ru tr el he fa ur hi zh ja ko nl pl sv uk ro hy ka az id th vi"
+).split()
+MAX_INTRO = 1500  # characters of the intro kept
+
+# --- Spend (spend.py) -----------------------------------------------------------
+# USD per million tokens: input, output, cache read. A cache write (5 min) is 1.25x input.
+# Check https://www.anthropic.com/pricing when adding a model; unknown models cost None.
+PRICES = {
+    "claude-opus-5-5": (4.00, 20.00, 0.20),
+    "claude-sonnet-5-5": (2.00, 10.00, 0.20),
+    "claude-haiku-5-5": (0.10, 0.50, 0.01),  # prompts up to 100K tokens
+}
+CACHE_WRITE = 1.25
+
+# --- Tool approval answers -------------------------------------------------------
+# Answers a person can give to an approval request, and the words that map to them
+# (terminal or pipe). Anything else counts as no.
+YES, NO, ALL = "yes", "no", "all"
+ANSWERS = {"y": YES, "yes": YES, "n": NO, "no": NO, "a": ALL, "all": ALL}
+
 # --- Tool approval over a pipe (test UI) ------------------------------------------
 # When the run has no terminal (the UI runs it as a subprocess), an approval request is one
 # stdout line: APPROVAL_PREFIX + JSON {"tool", "input"}. The answer comes back as one stdin

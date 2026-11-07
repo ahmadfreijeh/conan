@@ -134,7 +134,7 @@ Agent (subprocess)            RunManager (server)              Browser
 ## Cost
 
 - **Prompt caching** is on: the prompt, the tools and the conversation so far (photo and crops included) are cached on Anthropic's side, so each model call after the first in a run reads them at about 10% of the input price. The cache lives 5 minutes after its last use; changing the prompt, a tool docstring or the model starts a new one.
-- **Spend:** every run adds one line (model, tokens, USD) to `out/spend.jsonl` (CLI and UI). Prices per model are in `PRICES` (`spend.py`). The test UI shows it in the top bar.
+- **Spend:** every run adds one line (model, tokens, USD) to `out/spend.jsonl` (CLI and UI). Prices per model are in `PRICES` (`constants.py`). The test UI shows it in the top bar.
 
 ## Settings (`.env`)
 

@@ -16,13 +16,15 @@ from strands.models.anthropic import AnthropicModel
 from app.core.config import get_settings
 from app.modules.agent import spend
 from app.modules.agent.constants import (
+    ANSWERS,
     APPROVAL_PREFIX,
+    NO,
     NO_TOOLS_TIP,
     SYSTEM_PROMPT,
     TOOL_TIPS,
 )
 from app.modules.agent.helpers import image_bytes
-from app.modules.agent.hooks import ALL, HOOKS, NO, YES, run_sources, start_run
+from app.modules.agent.hooks import HOOKS, run_sources, start_run
 from app.modules.agent.schemas import ReasonResult, RunResult, Source
 from app.modules.agent.tools import select_tools, tool_name
 from app.modules.engine.schemas import AgentInput
@@ -152,9 +154,6 @@ def _record_usage(model: str, before: dict, after: dict) -> None:
         f"cache write {line['cache_write']}, output {line['output']} ({usd})",
         file=sys.stderr,
     )
-
-
-ANSWERS = {"y": YES, "yes": YES, "n": NO, "no": NO, "a": ALL, "all": ALL}
 
 
 def ask_in_terminal(request: dict) -> str:

@@ -17,6 +17,7 @@ from functools import lru_cache
 from strands import tool
 
 from app.core.config import get_settings
+from app.modules.agent.constants import GENERIC_WORDS
 from app.modules.agent.tools.http import ApiClient, ToolError
 
 
@@ -57,9 +58,6 @@ def _osm_url(item: dict) -> str:
     if item.get("osm_type") and item.get("osm_id"):
         return f"https://www.openstreetmap.org/{item['osm_type']}/{item['osm_id']}"
     return f"https://www.openstreetmap.org/?mlat={item['lat']}&mlon={item['lon']}#map=18/{item['lat']}/{item['lon']}"
-
-
-GENERIC_WORDS = {"brasserie", "cafe", "café", "restaurant", "hotel", "bar", "shop", "le", "la"}
 
 
 def _no_match_hints(name: str, city: str | None, country: str | None) -> list[str]:

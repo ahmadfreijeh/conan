@@ -11,17 +11,9 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from app.core.config import get_settings
+from app.modules.agent.constants import CACHE_WRITE, PRICES
 
 ROOT = Path(__file__).resolve().parents[3]
-
-# USD per million tokens: input, output, cache read. A cache write (5 min) is 1.25x input.
-# Check https://www.anthropic.com/pricing when adding a model; unknown models cost None.
-PRICES = {
-    "claude-opus-5-5": (4.00, 20.00, 0.20),
-    "claude-sonnet-5-5": (2.00, 10.00, 0.20),
-    "claude-haiku-5-5": (0.10, 0.50, 0.01),  # prompts up to 100K tokens
-}
-CACHE_WRITE = 1.25
 
 
 def _log_path() -> Path:

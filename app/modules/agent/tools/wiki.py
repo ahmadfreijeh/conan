@@ -22,6 +22,7 @@ from functools import lru_cache
 from strands import tool
 
 from app.core.config import get_settings
+from app.modules.agent.constants import MAX_INTRO, NAME_LANGS
 from app.modules.agent.tools.http import ApiClient, ToolError
 
 
@@ -100,13 +101,6 @@ def wiki_search(query: str, lang: str = "en", limit: int = 5) -> dict:
             hints.append('try lang="fr" or lang="ar" (or the language of text in the photo)')
         return {"query": query, "lang": lang, "results": [], "hints": hints}
     return {"query": query, "lang": lang, "results": results}
-
-
-# Languages whose article names wiki_summary returns (local names help find_place).
-NAME_LANGS = (
-    "en fr ar es de it pt ru tr el he fa ur hi zh ja ko nl pl sv uk ro hy ka az id th vi"
-).split()
-MAX_INTRO = 1500  # characters of the intro kept
 
 
 @tool

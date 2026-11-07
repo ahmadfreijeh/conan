@@ -16,20 +16,16 @@ from strands import Agent
 from strands.hooks import AfterToolCallEvent, BeforeToolCallEvent
 
 from app.core.config import get_settings
+from app.modules.agent.constants import (
+    ALL,
+    ALLOWED_KEY,
+    LOOKUPS_KEY,
+    SOURCES_KEY,
+    WAITING_KEY,
+    YES,
+)
 from app.modules.agent.schemas import ReasonResult
 from app.modules.agent.tools import NEEDS_APPROVAL
-
-# Keys in agent.state
-LOOKUPS_KEY = "lookups"  # tool calls made this run
-ALLOWED_KEY = "allowed_tools"  # tools the person answered "all" for, this run
-SOURCES_KEY = "sources"  # links the tools returned this run: {title, url, kind, tool}
-
-# Key in event.invocation_state: ids of tool calls paused for approval. Strands still runs
-# the other hooks when one pauses, so they skip these calls (no double count or print).
-WAITING_KEY = "waiting_for_approval"
-
-# Answers a person can give to an approval request
-YES, NO, ALL = "yes", "no", "all"
 
 
 def _is_lookup(event: BeforeToolCallEvent) -> bool:
