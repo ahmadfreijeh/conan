@@ -92,7 +92,7 @@ Applies to every step in this branch:
   needs bytes).
 - A failed job keeps `result` empty and puts the error in `log`.
 - Step 4: the worker catches the job's prints (stdout and stderr) with `LiveLog`
-  (`app/worker/live_log.py`) and sends each line to `job:{id}:log`; engine and agent code
+  (`app/worker/live/log.py`) and sends each line to `job:{id}:log`; engine and agent code
   is unchanged. Only safe with one job per worker (`max_jobs = 1`); pass a `log` function
   instead if we ever run jobs side by side. The `end` entry is written after the row is
   committed; the key then expires after 5 minutes and the API reads the log from the row.
@@ -101,3 +101,6 @@ Applies to every step in this branch:
   the answer with BLPOP on `job:{id}:answer` (timeout = AGENT_APPROVAL_TIMEOUT).
 - Step 6: the models were already cached per process (`lru_cache`); the worker now loads
   them in `startup`, so the first job is not slow. The worker takes longer to start.
+- Worker folder: `main.py` (the worker), `queue.py` (queue a job by hand), `jobs/` (what
+  each job kind does), `live/` (how a running job talks to the UI through Redis: `log.py`,
+  `approval.py`).

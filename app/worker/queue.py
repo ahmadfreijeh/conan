@@ -1,6 +1,6 @@
 """Queue a job by hand, without the API (job types: see app/services/jobs.py):
 
-uv run python -m app.worker agent:geolocation --image samples/photo.jpeg [--tools find_place]
+uv run python -m app.worker.queue agent:geolocation --image samples/photo.jpeg [--tools find_place]
 """
 
 import argparse
@@ -21,7 +21,7 @@ async def queue(job_id: uuid.UUID, job_type: str, meta: dict[str, Any]) -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(prog="python -m app.worker", description=__doc__)
+    parser = argparse.ArgumentParser(prog="python -m app.worker.queue", description=__doc__)
     parser.add_argument("type", help="job type, e.g. agent:geolocation")
     parser.add_argument("--image", help="path to a JPEG, PNG or WebP file")
     parser.add_argument("--tools", help='comma-separated tool names; "" = none (default: all)')

@@ -12,8 +12,8 @@ from typing import Any
 from app.db.session import SessionLocal
 from app.modules.agent.constants import Approve
 from app.repositories.job import JobRepository
-from app.worker.approval import redis_approve
-from app.worker.live_log import LiveLog
+from app.worker.live.approval import redis_approve
+from app.worker.live.log import LiveLog
 
 logger = logging.getLogger(__name__)
 

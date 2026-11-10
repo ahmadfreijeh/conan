@@ -113,7 +113,7 @@ uv run python -m app.modules.engine samples/photo.jpeg --reason --tools "" --out
 Tools named in `NEEDS_APPROVAL` (`tools/__init__.py`) ask a person before every call; all tools so far are free, so the list is empty for now (`AGENT_APPROVAL=all` asks for every tool, handy to test). Answers: **yes** (run it), **no** (skip it, the agent goes on) or **all** (allow this tool for the rest of the run).
 
 - **CLI:** asks in the terminal: `Allow find_place(...)? [y]es / [n]o / [a]ll:`.
-- **Test UI:** a box in the Progress card with Yes / No / Allow all. The worker sends the request through Redis (`app/worker/approval.py`) and waits for the answer; no answer in `AGENT_APPROVAL_TIMEOUT` seconds counts as no.
+- **Test UI:** a box in the Progress card with Yes / No / Allow all. The worker sends the request through Redis (`app/worker/live/approval.py`) and waits for the answer; no answer in `AGENT_APPROVAL_TIMEOUT` seconds counts as no.
 
 ```
 Worker (agent job)                  Redis                       API + Browser

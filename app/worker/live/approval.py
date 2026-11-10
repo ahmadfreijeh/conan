@@ -14,7 +14,7 @@ from app.core.config import get_settings
 from app.modules.agent.constants import ANSWERS, NO, Approve
 from app.modules.agent.helpers import format_call
 from app.services.jobs import job_key
-from app.worker.live_log import LiveLog
+from app.worker.live.log import LiveLog
 
 
 def redis_approve(redis: Redis, job_id: str, live: LiveLog) -> Approve:
