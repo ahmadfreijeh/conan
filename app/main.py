@@ -11,6 +11,7 @@ from app.core.config import get_settings
 from app.core.errors import register_error_handlers
 from app.core.logging import setup_logging
 from app.db.session import engine
+from app.services.jobs import close_arq_pool
 
 UI_PAGE = Path(__file__).parent / "ui" / "index.html"
 
@@ -20,6 +21,7 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     setup_logging()
     yield
     await redis_client.aclose()
+    await close_arq_pool()
     await engine.dispose()
 
 

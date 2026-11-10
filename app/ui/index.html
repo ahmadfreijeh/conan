@@ -132,7 +132,7 @@
   #clear { width:auto; margin:0; padding:3px 10px; font-size:11px; background:var(--card); box-shadow:var(--shadow-sm); }
   #clear:hover { background:var(--bad); color:#fff; }
   .dot { display:inline-block; width:9px; height:9px; border:1.5px solid var(--ink); border-radius:50%; margin-right:5px; vertical-align:-1px; }
-  .dot.done { background:var(--ok); } .dot.failed, .dot.interrupted { background:var(--bad); } .dot.running { background:var(--warn); }
+  .dot.done { background:var(--ok); } .dot.failed { background:var(--bad); } .dot.queued, .dot.running { background:var(--warn); }
   /* model input */
   .crops { display:flex; flex-wrap:wrap; gap:14px; }
   .crops figure { margin:0; width:160px; }
@@ -206,7 +206,7 @@
 <header>
   <div>
     <h1>Conan<span>Image geolocation</span></h1>
-    <p>Upload a photo. It goes through extraction (<code>scripts/full_run.sh</code>), then the model guesses where it was taken.</p>
+    <p>Upload a photo. The worker extracts clues from it, then the model guesses where it was taken.</p>
   </div>
   <div class="head-right">
     <div class="meta spend" id="spend" title="LLM spend from out/spend.jsonl. Left = CREDIT_BUDGET - spent (an estimate: Anthropic has no balance API)">no runs yet</div>
@@ -457,13 +457,15 @@ function showApproval(runId, req) {
     b.disabled = false;
     b.onclick = async () => {
       $("approval").querySelectorAll("button").forEach((x) => { x.disabled = true; });
+      // Hide now, not after the reply: the next request can arrive before the reply does,
+      // and hiding later would hide that new box.
+      hideApproval();
       const res = await fetch(`/api/v1/runs/${runId}/approval`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ answer: b.dataset.answer }),
       });
       if (!res.ok) log("approval failed: " + ((await res.json()).error?.message || res.statusText));
-      hideApproval();
     };
   });
   $("approval").classList.remove("hidden");

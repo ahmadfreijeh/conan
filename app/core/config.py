@@ -47,7 +47,8 @@ class Settings(BaseSettings):
     agent_max_lookups: int = 10  # tool calls per run; more are cancelled (agent/hooks.py)
     # Ask a person before tool calls: listed = tools in NEEDS_APPROVAL, all = every tool, none
     agent_approval: Literal["listed", "all", "none"] = "listed"
-    agent_approval_timeout: float = 300  # UI: seconds to wait for an answer, then "no"; 0 = forever
+    # Worker: seconds to wait for an approval answer, then "no"; 0 = forever
+    agent_approval_timeout: float = 300
     # Contact (email or URL) sent in the User-Agent; Wikipedia and OSM policies require one
     tools_contact: str = ""
     places_url: str = "https://nominatim.openstreetmap.org"  # OpenStreetMap Nominatim
