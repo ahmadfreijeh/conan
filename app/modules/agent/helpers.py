@@ -2,10 +2,17 @@
 app/modules/engine/helpers.py."""
 
 import io
+import json
 
 from PIL import Image
 
 from app.modules.agent.constants import IMAGE_MAX_SIDE
+
+
+def format_call(tool: str, args: dict) -> str:
+    """e.g. find_place(name="Place Saint-Georges", city="Paris")"""
+    text = ", ".join(f"{k}={json.dumps(v, ensure_ascii=False)}" for k, v in args.items())
+    return f"{tool}({text})"
 
 
 def image_bytes(image: Image.Image) -> bytes:

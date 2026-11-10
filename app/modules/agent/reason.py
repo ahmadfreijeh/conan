@@ -5,9 +5,7 @@ candidates with map lookups and returns a ReasonResult: ranked candidate places 
 evidence (and coordinates when a lookup confirmed them), plus searches it could not run yet.
 """
 
-import json
 import sys
-from collections.abc import Callable
 
 from strands import Agent
 from strands.models import CacheConfig
@@ -17,23 +15,24 @@ from app.core.config import get_settings
 from app.modules.agent import spend
 from app.modules.agent.constants import (
     ANSWERS,
-    APPROVAL_PREFIX,
     NO,
     NO_TOOLS_TIP,
     SYSTEM_PROMPT,
     TOOL_TIPS,
+    Approve,
 )
-from app.modules.agent.helpers import image_bytes
+from app.modules.agent.helpers import format_call, image_bytes
 from app.modules.agent.hooks import HOOKS, run_sources, start_run
 from app.modules.agent.schemas import ReasonResult, RunResult, Source
 from app.modules.agent.tools import select_tools, tool_name
+from app.modules.engine.helpers import split_csv
 from app.modules.engine.schemas import AgentInput
 
 
 def tool_names_from_settings() -> list[str] | None:
     """AGENT_TOOLS as a list: None when unset (all tools), [] when empty (no tools)."""
     raw = get_settings().agent_tools
-    return None if raw is None else [n.strip() for n in raw.split(",") if n.strip()]
+    return None if raw is None else split_csv(raw)
 
 
 def system_prompt(tools: list) -> str:
@@ -89,10 +88,6 @@ def _message(agent_input: AgentInput) -> list[dict]:
         content.append(_image(crop.image))
     content.append({"text": "Where was this photo taken?"})
     return content
-
-
-# Gets what a tool wants to do ({"tool": ..., "input": {...}}), returns "yes", "no" or "all".
-Approve = Callable[[dict], str]
 
 
 def reason(
@@ -158,21 +153,11 @@ def _record_usage(model: str, before: dict, after: dict) -> None:
 
 def ask_in_terminal(request: dict) -> str:
     """Approve function for the CLI: ask on the terminal. Enter or anything else = no."""
-    args = ", ".join(f"{k}={v!r}" for k, v in request["input"].items())
-    answer = input(f"Allow {request['tool']}({args})? [y]es / [n]o / [a]ll: ").strip().lower()
+    call = format_call(request["tool"], request["input"])
+    answer = input(f"Allow {call}? [y]es / [n]o / [a]ll: ").strip().lower()
     return ANSWERS.get(answer, NO)
 
 
-def ask_over_pipe(request: dict) -> str:
-    """Approve function when there is no terminal (the UI): one line out, one line back.
-
-    Prints APPROVAL_PREFIX + the request as JSON, then waits for yes / no / all on stdin.
-    If stdin closes, the answer is no.
-    """
-    print(APPROVAL_PREFIX + json.dumps(request, ensure_ascii=False), flush=True)
-    return ANSWERS.get(sys.stdin.readline().strip().lower(), NO)
-
-
-def default_approve() -> Approve:
-    """Ask on the terminal if there is one, else over the pipe (the UI)."""
-    return ask_in_terminal if sys.stdin.isatty() else ask_over_pipe
+def default_approve() -> Approve | None:
+    """Ask on the terminal if there is one; else None (tools that need approval get no)."""
+    return ask_in_terminal if sys.stdin.isatty() else None

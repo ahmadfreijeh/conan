@@ -4,6 +4,8 @@ Values that change per machine or per run (model name, max tokens) live in .env
 and come from app/core/config.py::get_settings(), not here.
 """
 
+from collections.abc import Callable
+
 # --- Images sent to the LLM ---------------------------------------------------------
 # Longest side of the photo sent to the model. Larger images get downscaled by the API anyway.
 IMAGE_MAX_SIDE = 1568
@@ -103,12 +105,8 @@ CACHE_WRITE = 1.25
 
 # --- Tool approval answers -------------------------------------------------------
 # Answers a person can give to an approval request, and the words that map to them
-# (terminal or pipe). Anything else counts as no.
+# (terminal). Anything else counts as no.
 YES, NO, ALL = "yes", "no", "all"
 ANSWERS = {"y": YES, "yes": YES, "n": NO, "no": NO, "a": ALL, "all": ALL}
-
-# --- Tool approval over a pipe (test UI) ------------------------------------------
-# When the run has no terminal (the UI runs it as a subprocess), an approval request is one
-# stdout line: APPROVAL_PREFIX + JSON {"tool", "input"}. The answer comes back as one stdin
-# line: yes, no or all. app/services/runs.py watches for this prefix.
-APPROVAL_PREFIX = "APPROVAL "
+# An approve function: gets {"tool", "input"}, returns "yes", "no" or "all".
+Approve = Callable[[dict], str]

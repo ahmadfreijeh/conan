@@ -6,6 +6,7 @@ import sys
 from pathlib import Path
 
 from app.modules.engine.extractors.loader import ImageLoadError
+from app.modules.engine.helpers import split_csv
 from app.modules.engine.pipeline import run_pipeline
 from app.modules.engine.schemas import ExtractionPayload
 
@@ -57,9 +58,7 @@ def main(argv: list[str] | None = None) -> int:
         agent_input = prepare_for_agent(payload)
         if args.out:
             save_agent_input(agent_input, args.out)  # clues.json + sent/, to check the input
-        tool_names = (
-            None if args.tools is None else [n.strip() for n in args.tools.split(",") if n.strip()]
-        )
+        tool_names = None if args.tools is None else split_csv(args.tools)
         result = reason(agent_input, approve=default_approve(), tool_names=tool_names)
     except (RuntimeError, anthropic.APIError) as exc:
         print(f"error: {exc}", file=sys.stderr)

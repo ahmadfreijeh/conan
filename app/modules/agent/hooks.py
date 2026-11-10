@@ -24,6 +24,7 @@ from app.modules.agent.constants import (
     WAITING_KEY,
     YES,
 )
+from app.modules.agent.helpers import format_call
 from app.modules.agent.schemas import ReasonResult
 from app.modules.agent.tools import NEEDS_APPROVAL
 
@@ -92,10 +93,9 @@ def print_tool_call(event: BeforeToolCallEvent) -> None:
     """Show each lookup in the terminal (stderr), e.g. -> find_place(name="...", city="...")."""
     if not _is_lookup(event) or _is_waiting(event):
         return
-    tool_input = event.tool_use["input"]
-    args = ", ".join(f"{k}={json.dumps(v, ensure_ascii=False)}" for k, v in tool_input.items())
+    call = format_call(event.tool_use["name"], event.tool_use["input"])
     skipped = f"  [skipped: {event.cancel_tool}]" if event.cancel_tool else ""
-    print(f"-> {event.tool_use['name']}({args}){skipped}", file=sys.stderr)
+    print(f"-> {call}{skipped}", file=sys.stderr)
 
 
 def _tool_json(event: AfterToolCallEvent) -> dict | None:
