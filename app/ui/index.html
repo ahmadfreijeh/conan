@@ -395,21 +395,28 @@ $("run").onclick = async () => {
   logPage = 1;
   await loadHistory();
   markSelected(body.id);
+  watchRun(body.id, Date.now());
+};
 
-  const started = Date.now();
+// Follow a queued or running run live: log lines, step bar, approvals, then the result.
+// Used after an upload, and when a run that is still going is opened from History
+// (e.g. after a page refresh); the stream then replays the lines so far first.
+function watchRun(id, started) {
+  busy = true;
+  $("run").disabled = true;
   let step = 0;
   const timer = setInterval(() => {
     $("status").textContent = `Running… ${Math.round((Date.now() - started) / 1000)}s`;
   }, 1000);
 
-  const events = new EventSource(`/api/v1/runs/${body.id}/events`);
+  const events = new EventSource(`/api/v1/runs/${id}/events`);
   events.onmessage = (e) => {
     const line = JSON.parse(e.data).line;
     const m = line.match(/^==> (\d)\/5/);
     if (m) { step = Number(m[1]); setStep(step, "active"); }
     log(line);
   };
-  events.addEventListener("approval", (e) => showApproval(body.id, JSON.parse(e.data)));
+  events.addEventListener("approval", (e) => showApproval(id, JSON.parse(e.data)));
   events.addEventListener("approval_done", hideApproval);  // answered here, elsewhere or timed out
   events.addEventListener("end", async (e) => {
     events.close();
@@ -424,13 +431,13 @@ $("run").onclick = async () => {
       setStep(step || 1, "failed");
       $("status").textContent = `Failed after ${secs}s. See the log.`;
     }
-    showOutput(await (await fetch(`/api/v1/runs/${body.id}`)).json());
+    showOutput(await (await fetch(`/api/v1/runs/${id}`)).json());
     busy = false;
-    $("run").disabled = false;
+    $("run").disabled = !chosen;  // a run opened from History has no new photo chosen
     loadHistory();
     loadSpend();
   });
-};
+}
 
 // ---- tool approval ----------------------------------------------------------
 
@@ -618,6 +625,13 @@ async function openRun(id) {
   $("run").disabled = true;
   $("preview").src = `/api/v1/runs/${id}/files/photo`;
   $("preview").style.display = "block";
+  if (run.status === "queued" || run.status === "running") {  // still going: follow it live
+    $("log").textContent = "";
+    hideOutput();
+    setStep(0, "");
+    watchRun(id, Date.parse(run.created_at));
+    return;
+  }
   $("log").textContent = run.log.join("\n");
   setStep(run.status === "done" ? 6 : 1, run.status === "done" ? "" : "failed");
   $("status").textContent = `#${id.slice(0, 6)} · ${run.status} · ${run.filename} · ${new Date(run.created_at).toLocaleString()}`;
