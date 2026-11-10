@@ -555,7 +555,7 @@ async function loadHistory() {
   const runs = data.items;
   const ul = $("history");
   ul.replaceChildren();
-  if (!runs.length) { ul.append(el("li", "No runs yet.", "muted")); return; }
+  if (!runs.length) { ul.append(el("li", "No runs yet.", "muted")); return runs; }
   runs.forEach((r) => {
     const li = el("li");
     li.dataset.id = r.id;
@@ -581,6 +581,7 @@ async function loadHistory() {
     ul.append(li);
   });
   markSelected(openedId);  // keep the open run highlighted across pages
+  return runs;
 }
 
 let openedId = null;
@@ -773,7 +774,11 @@ async function loadSpend() {
   box.innerHTML = html;
 }
 
-loadHistory();
+// On page load (e.g. after a refresh), open the newest run that is still going and follow it.
+loadHistory().then((runs) => {
+  const going = runs.find((r) => r.status === "queued" || r.status === "running");
+  if (going) openRun(going.id);
+});
 loadSpend();
 loadTools();
 const tick = () => { $("clock").textContent = new Date().toLocaleTimeString(); };

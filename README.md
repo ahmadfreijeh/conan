@@ -170,8 +170,9 @@ Check candidates against the photo and pick the final location.
 
 ### Production
 
-- [ ] Run geolocation jobs in the Arq worker instead of the request
-- [ ] Save runs and results to Postgres
+- [x] Run geolocation jobs in the Arq worker instead of the request (`docs/plans/arq-workers.md`)
+- [x] Save runs and results to Postgres (`jobs` table)
+- [ ] Cancel a run from the UI and stop all its work. The job runs in a thread that can't be killed, so it must stop itself: a `job:{id}:cancel` flag in Redis, checked between steps and before each tool call, also waking a pending approval; a `cancelled` status
 - [ ] Set up PostGIS for location data
 
 ### Known issues
