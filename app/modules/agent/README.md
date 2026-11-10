@@ -113,16 +113,17 @@ uv run python -m app.modules.engine samples/photo.jpeg --reason --tools "" --out
 Tools named in `NEEDS_APPROVAL` (`tools/__init__.py`) ask a person before every call; all tools so far are free, so the list is empty for now (`AGENT_APPROVAL=all` asks for every tool, handy to test). Answers: **yes** (run it), **no** (skip it, the agent goes on) or **all** (allow this tool for the rest of the run).
 
 - **CLI:** asks in the terminal: `Allow find_place(...)? [y]es / [n]o / [a]ll:`.
-- **Test UI:** a box in the Progress card with Yes / No / Allow all. No answer in `AGENT_APPROVAL_TIMEOUT` seconds counts as no.
+- **Test UI:** a box in the Progress card with Yes / No / Allow all. The worker sends the request through Redis (`app/worker/approval.py`) and waits for the answer; no answer in `AGENT_APPROVAL_TIMEOUT` seconds counts as no.
 
 ```
-Agent (subprocess)            RunManager (server)              Browser
+Worker (agent job)                  Redis                       API + Browser
 1. hook pauses the agent
-2. prints APPROVAL {...}  ──► 3. marks run "waiting",
-                                 starts the timeout      ──►  4. shows the box
-                                                              5. you click Yes
-                              6. POST /approval writes   ◄──
-7. reads "yes", resumes  ◄──     "yes" to the agent's stdin
+2. saves the request       ──►  job:{id}:approval
+   + `approval` event      ──►  job:{id}:log         ──►  3. events stream shows the box
+                                                           4. you click Yes
+                                job:{id}:answer      ◄──  5. POST /approval pushes "yes"
+6. BLPOP gets "yes",       ◄──
+   resumes (or no after AGENT_APPROVAL_TIMEOUT)
 ```
 
 ### Add a tool
@@ -150,7 +151,7 @@ Agent (subprocess)            RunManager (server)              Browser
 | `AGENT_TOOLS` | (unset) | Tools the agent gets, comma-separated; unset = all, empty = none. CLI: `--tools`; UI: the Tools toggles |
 | `AGENT_MAX_LOOKUPS` | `10` | Tool calls per run; more are cancelled |
 | `AGENT_APPROVAL` | `listed` | Who asks first: `listed` = tools in `NEEDS_APPROVAL`, `all` = every tool, `none` = nothing asks |
-| `AGENT_APPROVAL_TIMEOUT` | `300` | UI only: seconds to wait for an answer, then no; `0` = wait forever. Read when the server starts |
+| `AGENT_APPROVAL_TIMEOUT` | `300` | Worker jobs: seconds to wait for an answer, then no; `0` = wait forever |
 | `PLACES_URL` | `https://nominatim.openstreetmap.org` | Map search service |
 | `PLACES_TIMEOUT` | `10` | Seconds per map lookup |
 | `TOOLS_CONTACT` | (empty) | Email or URL added to the User-Agent. **Needed for Wikipedia** (it answers 403 without a contact); OpenStreetMap asks for it too |

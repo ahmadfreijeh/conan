@@ -73,12 +73,12 @@ scripts/full_run.sh samples/cafe.jpg out/cafe    # any photo and output folder
 
 ## Test UI
 
-Open http://127.0.0.1:8000, upload a photo and press Run. The server runs `scripts/full_run.sh`, streams the log live (steps 1/5 to 5/5), then shows the result: summary, ranked places with confidence and evidence, sources, search queries, OCR fixes, and what was sent to the LLM (crops and cleaned clues). Local testing only, one run at a time.
+Start the API and the worker (`uv run arq app.worker.main.WorkerSettings`), open http://127.0.0.1:8000, upload a photo and press Run. The API saves an `agent:geolocation` job in the `jobs` table and queues it; the Arq worker runs it (extract, then reason) and saves the status and result on the row. The worker's printed lines go to a Redis stream (`job:{id}:log`) and the page shows them live, then the result: summary, ranked places with confidence and evidence, sources, search queries, OCR fixes, and what was sent to the LLM (crops and cleaned clues).
 
-- **History** (left panel): every upload, newest first, with its top guess; click one to open it again. Read from `out/uploads/<run id>/`, so it survives restarts. Hover × to delete one, or "Delete all".
+- **History** (left panel): every upload, newest first, with its top guess; click one to open it again. Read from the `jobs` table; files in `out/jobs/<job id>/`. Hover × to delete one, or "Delete all".
 - **Extraction log** (bottom): every Phase 1 run from `out/runs.jsonl` (UI and CLI) with timings, peak RAM and device.
-- **Tools card:** a toggle per tool; only the tools that are on go to the run. See [choosing tools](app/modules/agent/README.md#choosing-tools-per-run).
 - **Approval:** tools that need approval show Yes / No / Allow all in the Progress card; no answer in `AGENT_APPROVAL_TIMEOUT` seconds counts as No. See [tool approval](app/modules/agent/README.md#tool-approval).
+- **Tools card:** a toggle per tool; only the tools that are on go to the run. See [choosing tools](app/modules/agent/README.md#choosing-tools-per-run).
 - **Top bar:** last run's tokens and cost, total spent, and credit left if `CREDIT_BUDGET` is set, e.g. `Last run: 54k tokens · $0.059 | Total: 12 runs · 650k tokens · $1.42 | Left: ~$18.58 of $20`.
 - **Rate limit:** `POST /api/v1/runs` allows `RUN_LIMIT_PER_HOUR` (default 3) runs per IP per rolling hour (Redis, `app/services/rate_limit.py`); the next gets `429` with "Try again in N min". Off when `APP_ENV=local` unless `RUN_LIMIT_ON_LOCAL=true`. Behind a proxy, set `TRUST_PROXY=true`.
 
